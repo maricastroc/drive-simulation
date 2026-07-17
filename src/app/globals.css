@@ -1,26 +1,196 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Urban Flow — design system (Etapa 9)
+   A restrained "mission-control" dark theme: one accent, semantic status,
+   mono numerals, hairline surfaces. Tokens live here; the canvas mirrors the
+   same hex in renderer.ts.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base + surfaces */
+  --bg: #07080a;
+  --surface-1: #0c0e12; /* rails */
+  --surface-2: #121620; /* elevated panels, controls */
+  --surface-3: #1a1f2b; /* hover */
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.13);
+
+  /* Text */
+  --text-1: #eef1f6;
+  --text-2: #9ba3b0;
+  --text-3: #626a77;
+
+  /* Accent (interaction / selection) + status */
+  --accent: #4f8ff7;
+  --accent-2: #6aa6ff;
+  --accent-soft: rgba(79, 143, 247, 0.14);
+  --good: #37d29b;
+  --warn: #f4b740;
+  --bad: #fb6a68;
+
+  --shadow-panel: 0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 8px 30px -12px rgba(0, 0, 0, 0.7);
+  --shadow-float: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 18px 50px -18px rgba(0, 0, 0, 0.85);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow: hidden; /* the app is a full-viewport shell; panels scroll internally */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numerals everywhere read as instrument readouts. */
+.tnum {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "cv01" 1;
+}
+
+.eyebrow {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+@keyframes uf-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes uf-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes uf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+  }
+}
+@keyframes uf-hint {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--accent-soft);
+  }
+  50% {
+    box-shadow: 0 0 0 5px var(--accent-soft);
+  }
+}
+@keyframes uf-sheen {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+.anim-up {
+  animation: uf-fade-up 0.32s var(--ease) both;
+}
+.anim-fade {
+  animation: uf-fade 0.4s var(--ease) both;
+}
+.pulse-dot {
+  animation: uf-pulse 1.8s ease-in-out infinite;
+}
+.hint-ring {
+  animation: uf-hint 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-up,
+  .anim-fade,
+  .pulse-dot,
+  .hint-ring {
+    animation: none;
+  }
+}
+
+/* ── Instrument slider ──────────────────────────────────────────────────── */
+.range-instr {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--accent) var(--fill, 40%),
+    rgba(255, 255, 255, 0.1) var(--fill, 40%),
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  outline: none;
+  cursor: pointer;
+}
+.range-instr::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 143, 247, 0.18), 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+.range-instr::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 5px rgba(79, 143, 247, 0.22), 0 2px 8px rgba(0, 0, 0, 0.55);
+}
+.range-instr::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 143, 247, 0.18);
+}
+
+/* ── Scrollbar (rails) ──────────────────────────────────────────────────── */
+.thin-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.thin-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+  background-clip: padding-box;
 }

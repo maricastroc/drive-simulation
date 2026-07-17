@@ -9,8 +9,9 @@ import { pushBack } from './laneList';
  * FASE 0 — admit new vehicles from demand (design doc §G.1).
  *
  * Each source is a Bernoulli arrival per tick with p = rate * dt (a discrete Poisson
- * approximation). An arrival that finds the source occupied is dropped — a simple loss model;
- * a source queue can come later. Deterministic given the World's seed and demand order.
+ * approximation). An arrival that finds the source occupied is dropped. If the source declares
+ * candidate routes, one is chosen uniformly at random; otherwise the car has no route and falls
+ * back to single-exit following. Deterministic given the World's seed and demand order.
  */
 export function spawn(world: World): void {
   const { agents, occ, dt } = world;
@@ -30,6 +31,16 @@ export function spawn(world: World): void {
     agents.v[id] = src.speed ?? 0;
     agents.type[id] = 0;
     agents.enterTime[id] = world.time;
+
+    if (src.routes && src.routes.length > 0) {
+      const pick = nextRandom(world.rngState);
+      world.rngState = pick.state;
+      const route = src.routes[Math.min(src.routes.length - 1, Math.floor(pick.value * src.routes.length))];
+      agents.routeStart[id] = route.start;
+      agents.routeEnd[id] = route.end;
+      agents.routeIdx[id] = route.start;
+    }
+
     pushBack(agents, occ, src.lane, id);
   }
 }

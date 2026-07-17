@@ -30,8 +30,8 @@ export function findLeader(world: World, i: number): Leader {
     return { gap, leadV: agents.v[j] };
   }
 
-  const c = nextConnection(world, lane);
-  if (c === NONE) return OPEN_ROAD; // sink lane
+  const c = nextConnection(world, i);
+  if (c === NONE) return OPEN_ROAD; // sink lane / route end
 
   if (mustYield(world, c)) {
     const gap = Math.max(graph.length[lane] - agents.s[i] - STOP_OFFSET, 0);

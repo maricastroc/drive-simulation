@@ -7,9 +7,10 @@ import { nextConnection } from './intersection';
 /**
  * FASE 3 — advance vehicles across the network and remove finished trips (design doc §G).
  *
- * A car that reaches the end of its lane either crosses the junction onto its single outgoing
- * connection (carrying any overflow past the — zero-length — junction point) or, on a sink lane,
- * completes its trip and is despawned with its travel time recorded.
+ * A car that reaches the end of its lane either crosses the junction onto the connection its
+ * route dictates (advancing its route cursor, and carrying any overflow past the zero-length
+ * junction point) or, at its destination, completes its trip and is despawned with its travel
+ * time recorded.
  */
 export function advance(world: World): void {
   const { agents, occ, graph, metrics } = world;
@@ -17,7 +18,7 @@ export function advance(world: World): void {
   for (let lane = 0; lane < graph.laneCount; lane++) {
     let head = occ.head[lane];
     while (head !== NONE && agents.s[head] >= graph.length[lane]) {
-      const c = nextConnection(world, lane);
+      const c = nextConnection(world, head);
       const overflow = agents.s[head] - graph.length[lane];
       const id = popFront(agents, occ, lane);
 
@@ -28,6 +29,7 @@ export function advance(world: World): void {
       } else {
         const conn = graph.connections[c];
         agents.s[id] = Math.max(overflow - conn.length, 0);
+        if (agents.routeEnd[id] > agents.routeStart[id]) agents.routeIdx[id] += 1;
         pushBack(agents, occ, conn.toLane, id);
       }
       head = occ.head[lane];

@@ -57,19 +57,22 @@ function noOverlap(world: World, lane: number): boolean {
 describe('intersection: nextConnection', () => {
   it('returns the single outgoing connection, or NONE for a sink lane', () => {
     const w = createWorld(crossing(), 32);
-    expect(nextConnection(w, 0)).not.toBe(NONE); // A has A->C
-    expect(nextConnection(w, 1)).toBe(NONE); // C is a sink
-    expect(nextConnection(w, 2)).not.toBe(NONE); // B has B->D
-    expect(nextConnection(w, 3)).toBe(NONE); // D is a sink
+    const onA = put(w, 0, 50, 0);
+    const onC = put(w, 1, 50, 0);
+    const onB = put(w, 2, 50, 0);
+    const onD = put(w, 3, 50, 0);
+    expect(nextConnection(w, onA)).not.toBe(NONE); // A -> C
+    expect(nextConnection(w, onC)).toBe(NONE); // C is a sink
+    expect(nextConnection(w, onB)).not.toBe(NONE); // B -> D
+    expect(nextConnection(w, onD)).toBe(NONE); // D is a sink
   });
 });
 
 describe('intersection: strict-priority gap acceptance', () => {
   it('the minor road yields only when a major car is approaching', () => {
     const w = createWorld(crossing(), 32);
-    const bConn = nextConnection(w, 2);
-
-    put(w, 2, 99, 2); // a B car at the end of its lane
+    const b = put(w, 2, 99, 2); // a B car at the end of its lane
+    const bConn = nextConnection(w, b); // the movement B is about to make (B->D)
     expect(mustYield(w, bConn)).toBe(false); // no major traffic -> go
 
     put(w, 0, 90, 14); // a fast A car near the junction (tta ~0.7s < T_SAFE)
@@ -78,9 +81,9 @@ describe('intersection: strict-priority gap acceptance', () => {
 
   it('the major road never yields to the minor road', () => {
     const w = createWorld(crossing(), 32);
-    put(w, 0, 99, 5); // A car
+    const a = put(w, 0, 99, 5); // A car
     put(w, 2, 99, 14); // fast B car right at the junction
-    expect(mustYield(w, nextConnection(w, 0))).toBe(false); // A (rank 2) ignores B (rank 1)
+    expect(mustYield(w, nextConnection(w, a))).toBe(false); // A (rank 2) ignores B (rank 1)
   });
 });
 

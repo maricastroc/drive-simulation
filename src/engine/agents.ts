@@ -71,6 +71,10 @@ export function allocAgent(store: AgentStore): number {
   store.ahead[id] = NONE;
   store.behind[id] = NONE;
   store.a[id] = 0;
+  // Clear any route left over from a previous occupant of this slot (empty -> single-exit).
+  store.routeStart[id] = 0;
+  store.routeEnd[id] = 0;
+  store.routeIdx[id] = 0;
   store.activeCount += 1;
   return id;
 }

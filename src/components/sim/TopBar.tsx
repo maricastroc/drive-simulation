@@ -23,7 +23,7 @@ export function TopBar({
   freeKmh: number;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-[var(--border)] px-4 md:px-5">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-(--border) px-4 sm:h-[68px] md:px-5">
       <div className="flex items-center gap-3">
         <BrandMark />
         <div className="leading-tight">

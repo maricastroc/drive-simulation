@@ -1,7 +1,7 @@
 # Urban Flow — Progress
 
 Built incrementally in small, tested steps ("Etapas"). See `DESIGN.md` for the architecture.
-Status: **11 etapas done, 54 vitest tests passing, typecheck + lint clean.**
+Status: **13 etapas done, 69 vitest tests passing, typecheck + lint clean.**
 
 ## Done
 
@@ -18,6 +18,8 @@ Status: **11 etapas done, 54 vitest tests passing, typecheck + lint clean.**
 | 9 — Experience redesign | "Mission-control" UI (§17): map-hero full-bleed layout, live top-bar HUD (tweened numerals), a guided coach (baseline → disrupt → compare), a progressive inspector (empty legend → road → junction with live stats), an A/B panel reframed as before → after → impact with semantic deltas, floating instrument dock, and a depth-cued canvas (cased roads, live congestion tint, animated selection). Design tokens + motion in `globals.css`. No engine/API change. |
 | 10 — Living mesh | Canvas-only pass (§18): one thermal colour language across cars/roads/junctions/flow, an always-on downstream flow field (direction without cars), roads that light + halo with congestion, junction nodes that breathe with activity and warm with queues, car motion trails, a spotlight focus mode (dims the rest, keeps the target + its topology lit), and a 5×5 mesh. Pure `renderer.ts` (+ `GRID`); no engine/data/interaction change, 51 tests untouched. |
 | 11 — Controlled A/B + fast-forward | The A/B panel became a **controlled experiment** (`runExperiment`, §19): baseline vs. the staged intervention, both run headless on two freshly-seeded worlds for the same duration, so the delta is the intervention's effect — not time or noise. Deterministic and tested. A headless **fast-forward** (+60s) skips the wait for the network to fill. Also split the 1072-line `SimulationCanvas.tsx` into `components/sim/*` and extracted `render/thermal.ts`. +3 tests. |
+| 12 — Metrics time-series | A rolling **sparkline** on the two dynamic HUD vitals (§20): Flow /min (accent, auto-scaled) and km/h (green, scaled to free-flow) each carry a 60s live trace, newest pinned right. Pure geometry (`render/sparkline.ts`: ring buffer + SVG path strings) with an imperative shell (`components/sim/Sparkline.tsx`) fed once per sim-second from the RAF loop — no React re-render, consistent window at any speed. Cars/Trips stay counters. Presentation-only; +9 tests. |
+| 13 — Experiment presets | One-click **scenario presets** (§21): *Rush hour* (flood every entry), *Close the artery* (shut the central road → new traffic reroutes), *Signalize the centre* (lights on the middle junction). Each stages a **fresh same-seed network** — its demand + its one intervention — ready to watch live or run the A/B on. Deterministic central-junction pick from grid geometry (`render/presets.ts`, unit-tested & idempotent). Also gave the HUD header room to breathe now that the sparklines sit under the numerals. Presentation-only; +6 tests. |
 
 ## Key decisions (rationale)
 
@@ -60,6 +62,17 @@ Status: **11 etapas done, 54 vitest tests passing, typecheck + lint clean.**
   headlessly for the same number of ticks. The delta is attributable to the change alone (not elapsed
   time or noise). Pure and headless, so it's unit-testable *and* it runs even when the live RAF loop
   is throttled. The `pushBack` fix in `laneList.ts` must stay — see the note there.
+- **Sparkline = pure geometry + imperative shell (Etapa 12)** — the same split as the live numerals.
+  `render/sparkline.ts` is DOM-free (ring buffer + SVG path strings), so the hard part (normalization,
+  clamping, right-pinning the newest sample) unit-tests in Node; the component only writes those strings
+  to the SVG. Sampling is keyed on **sim-time** (one sample per `SAMPLE_DT`), not wall-clock, so the 60s
+  window holds at any playback speed and freezes when paused. Fed from the RAF loop via a `push` handle,
+  so the trace never triggers a React render — matching the HUD-numeral discipline.
+- **Presets stage a fresh scene, not a diff (Etapa 13)** — each preset rebuilds the world at its demand
+  and re-applies only its own intervention, so scenarios never stack and are reproducible (idempotent,
+  unit-tested). The central junction/artery is derived from grid geometry (nearest the centroid), so it
+  stays stable without hard-coding lane/node indices. They feed the same controlled A/B (§19): one click
+  to a runnable experiment. Demand-only presets (rush hour) leave the A/B disabled — nothing to compare.
 
 ## Quirks / gotchas
 
@@ -90,10 +103,6 @@ npm run dev -- --port 3477   # dev server (open http://localhost:3477)
 - **Lane changing (MOBIL)** + multiple lanes per direction (breaks the no-overtaking invariant —
   the per-lane list would need per-lane insertion/removal mid-lane).
 - **Select a car → trace its Dijkstra route** on the map (needs a new pick interaction).
-- **Experiment presets** — one-click scenarios ("rush hour", "close the artery", "signalize the
-  centre") that stage a config for the controlled A/B; cheap, great for onboarding/demo.
-- **Metrics time-series** — a rolling throughput/speed sparkline in the HUD, so the live network's
-  dynamics read over time (complements the controlled A/B). Per-lane congestion is already a live tint.
 - **Shareable URL** — serialize the scenario overlay + seed into the URL to share a specific run
   (most useful once deployed).
 - **Onboarding depth** — spotlight the exact road/button the coach references; persist "tour done".

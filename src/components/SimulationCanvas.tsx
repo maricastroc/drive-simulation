@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
 import { createScene, setDemandRate, sampleStats, runExperiment, type Scene, type ExperimentResult } from '@/render/scene';
+import { type Preset } from '@/render/presets';
 import { fitCamera, project, unproject, nearestLane } from '@/render/geometry';
 import { drawScene, type RenderCar, type RenderOverlay } from '@/render/renderer';
 import {
@@ -17,6 +18,7 @@ import {
 import { TopBar } from './sim/TopBar';
 import { type SparkHandle } from './sim/Sparkline';
 import { ControlDock } from './sim/ControlDock';
+import { Presets } from './sim/Presets';
 import { Coach } from './sim/Coach';
 import { Inspector } from './sim/Inspector';
 import { Experiment } from './sim/Experiment';
@@ -118,6 +120,17 @@ export function SimulationCanvas() {
     setSelStats(null);
     setExpResult(null);
   }, [demand]);
+
+  // Stage a one-click scenario on a fresh network: preset demand + its intervention.
+  const applyPreset = useCallback((preset: Preset) => {
+    const staged = createScene(preset.demandRate);
+    preset.stage?.(staged);
+    setSceneState(staged);
+    setDemand(Math.round(preset.demandRate * 10));
+    setSel(NONE_SEL);
+    setSelStats(null);
+    setExpResult(null);
+  }, []);
 
   const runExp = useCallback(() => {
     setExpRunning(true);
@@ -337,6 +350,7 @@ export function SimulationCanvas() {
 
         <aside className="thin-scroll flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-t border-[var(--border)] p-3 lg:w-[368px] lg:border-l lg:border-t-0">
           <Inspector scene={scene} sel={sel} stats={selStats} bump={bump} onClear={() => select(NONE_SEL)} sinkLabelOf={sinkLabelOf} />
+          <Presets onApply={applyPreset} />
           <Experiment
             result={expResult}
             running={expRunning}

@@ -152,6 +152,10 @@ uniformly (seeded) and points the agent's `routeStart/End/Idx` at the slice.
   dashes + cars (rounded capsules, HSL colour from speed: red stopped → green free-flow).
 - `scene.ts` — `createScene(rate)` builds the current demo (a grid via `grid.ts`), computes routes
   from each source to each reachable sink, and sets up demand. `setDemandRate` tunes it live.
+- `sparkline.ts` — pure HUD-sparkline geometry (§20): a rolling `SparkSeries` ring buffer and
+  `sparkGeometry`, which maps a value series to SVG polyline/area path strings (DOM-free, unit-tested).
+- `presets.ts` — one-click experiment scenarios (§21): `PRESETS` (demand + optional intervention) and
+  `centralJunction` (grid-geometry-derived), so a preset stages the same thing every run (unit-tested).
 - `grid.ts` — `buildGrid(rows, cols)` **procedurally generates a one-way Manhattan grid**: streets
   alternate direction by row/column; each junction wires straight + turn movements with
   **over-declared per-node conflicts** (every movement conflicts with every movement from another
@@ -184,7 +188,8 @@ shortest-path correctness, priority gap-acceptance, and bit-for-bit determinism.
   amber/all-red interphase (safe here only because junctions are points and the tick is atomic);
   closures reroute *new* traffic but in-flight cars queue at the barrier until it reopens (they do
   not re-plan); incidents never reroute (that is the point). Metrics are aggregate (throughput,
-  speed, trip time) — no per-lane time series yet.
+  speed, trip time); the HUD sparkline (§20) adds a rolling **network-wide** time series, but there is
+  still no per-lane time series (per-lane congestion is carried by the live road tint instead).
 - Preview quirks: the managed preview targets the sibling portfolio project — run the dev server
   manually (`npm run dev -- --port 3477`). RAF is throttled in a hidden tab, so screenshots show
   the network with 0 cars; it animates in a real visible browser. Turbopack can cache stale after
@@ -354,3 +359,57 @@ window so the animation resumes cleanly. It skips the wait for the network to fi
 The UI was also refactored this etapa: the 1072-line `SimulationCanvas.tsx` split into
 `components/sim/*` (TopBar, ControlDock, Coach, Inspector, Experiment, shared `ui`/`icons`/`types`),
 and the thermal palette moved to `render/thermal.ts`.
+
+## 20. Metrics time-series — HUD sparklines (Etapa 12)
+
+The controlled A/B (§19) answers "did the change help?"; the sparkline answers "what is the network
+doing *right now, over time*?". Presentation-only — no engine/render-data/API change.
+
+**What.** The two dynamic HUD vitals gain a rolling 60-second trace: **Flow /min** (accent, auto-scaled
+to its rolling max) and **km/h** (green, scaled to free-flow speed so trace height reads directly as
+"how freely the city moves"). Cars and Trips stay plain counters (one is read off the map, the other is
+monotonic — neither benefits from a trace). The newest sample is pinned to the right edge and history
+steps left, so "now" is always where the eye lands.
+
+**Pure core (`render/sparkline.ts`).** A `SparkSeries` is a capped ring buffer; `sparkGeometry(values,
+opts)` maps it to the SVG strings (polyline `points`, a closed area `path`, and the head point),
+handling normalization, clamping to `[min,max]`, and right-pinning. DOM-free and deterministic, so all
+the fiddly geometry unit-tests in the Node env alongside the engine.
+
+**Imperative shell (`components/sim/Sparkline.tsx`).** A `forwardRef` component exposing a `push(v)` /
+`reset()` handle (`SparkHandle`). It owns the series and writes `sparkGeometry`'s strings straight to a
+static SVG skeleton (gradient-filled area + stroked line + head dot) — so a new sample never triggers a
+React render, matching the live-numeral discipline (§17).
+
+**Sampling (`SimulationCanvas`).** The RAF loop pushes one sample per `SAMPLE_DT` of **sim-time** (not
+wall-clock), so the window is a fixed 60 s at any playback speed and simply holds when paused. Fast-
+forward and scene rebuilds rebase/clear the sampler so the trace never shows a phantom spike.
+
+**Preview note.** Because samples come only from live RAF frames, a hidden/background tab (which throttles
+RAF, see §15) barely advances the trace — it fills normally in a visible browser. Geometry is covered by
+unit tests regardless.
+
+## 21. Experiment presets (Etapa 13)
+
+One-click scenarios that remove the blank-canvas problem: instead of hunting for a road to close, the user
+stages a meaningful situation and is one click from a controlled A/B (§19). Presentation-only.
+
+**The three (`render/presets.ts`).** *Rush hour* (flood every entry, no intervention), *Close the artery*
+(shut the central road so new traffic reroutes), *Signalize the centre* (lights on the middle junction vs.
+give-way). Each `Preset` is `{ id, label, desc, tone, demandRate, stage? }` — `stage(scene)` runs the
+intervention via the existing `scene.ts` helpers (`toggleLaneClosed` / `toggleSignal`).
+
+**Fresh scene, not a diff.** `applyPreset` (in `SimulationCanvas`) rebuilds the world with `createScene`
+at the preset's demand, then runs `stage` on that clean scene — so presets never stack and are exactly
+reproducible. It also syncs the demand slider, clears the selection, and drops any prior A/B result. The
+`[scene]` effect then resyncs interpolation buffers and resets the sparklines, same as reset/fast-forward.
+
+**Deterministic targeting.** `centralJunction` picks the junction nearest the centroid of all junction
+positions, and the artery is its first real incoming lane — derived from grid geometry, so it stays
+correct without hard-coding indices and unit-tests deterministically. Demand-only presets (rush hour)
+stage no intervention, so the A/B stays disabled (`scenarioChanged` is false — nothing to compare);
+the intervention presets flip it on and auto-advance the coach to "run the A/B".
+
+**UI (`components/sim/Presets.tsx`).** A card in the right rail between the inspector and the experiment —
+each preset a button with a semantic dot (amber/red/accent), title, and one-line description. It reads as
+"quick-start scenarios", upstream of the manual inspector controls and the A/B that consumes them.

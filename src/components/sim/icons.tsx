@@ -54,3 +54,11 @@ export function IconArrow() {
     </svg>
   );
 }
+
+export function IconBolt() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="var(--accent-2)">
+      <path d="M8.7 1.3 2 9.3h6l-.7 5.4L14 6.7H8z" />
+    </svg>
+  );
+}

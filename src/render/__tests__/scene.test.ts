@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tick, NONE, type World } from '@/engine';
+import { tick, type World } from '@/engine';
 import { createScene, setDemandRate } from '../scene';
-import { placementAt } from '../geometry';
 
 function avgSpeed(world: World): number {
   const { agents } = world;
@@ -15,40 +14,31 @@ function avgSpeed(world: World): number {
   return n ? sum / n : 0;
 }
 
-describe('fork scene + render data path', () => {
+describe('grid scene + render data path', () => {
   it('starts empty and fills from demand', () => {
-    const scene = createScene(2);
+    const scene = createScene(1);
     expect(scene.world.agents.activeCount).toBe(0);
-    for (let n = 0; n < 120; n++) tick(scene.world);
+    for (let n = 0; n < 200; n++) tick(scene.world);
     expect(scene.world.agents.activeCount).toBeGreaterThan(0);
   });
 
   it('admitted cars accelerate: average speed rises above zero', () => {
-    const scene = createScene(2);
-    for (let n = 0; n < 120; n++) tick(scene.world);
+    const scene = createScene(1);
+    for (let n = 0; n < 200; n++) tick(scene.world);
     expect(avgSpeed(scene.world)).toBeGreaterThan(0);
   });
 
-  it('geometry places the approach and the branch as a fork', () => {
-    const g = createScene(1).geometry;
-    expect(placementAt(g, 0, 0).x).toBeCloseTo(-120); // IN starts to the west
-    expect(placementAt(g, 0, 120).x).toBeCloseTo(0); //  and reaches the junction
-    expect(placementAt(g, 2, 0).y).toBeCloseTo(0); //   BRANCH leaves the junction
-    expect(placementAt(g, 2, 110).y).toBeCloseTo(110); // heading south
+  it('has one geometry segment per lane', () => {
+    const scene = createScene(1);
+    expect(scene.geometry.a.length).toBe(scene.world.graph.laneCount);
+    expect(scene.geometry.b.length).toBe(scene.world.graph.laneCount);
   });
 
-  it('routes cars down both exits and completes trips', () => {
-    const scene = createScene(2);
-    let sawStraight = false;
-    let sawTurn = false;
-    for (let n = 0; n < 800; n++) {
-      tick(scene.world);
-      if (scene.world.occ.head[1] !== NONE) sawStraight = true; // straight exit
-      if (scene.world.occ.head[2] !== NONE) sawTurn = true; // branch exit
-    }
-    expect(sawStraight).toBe(true);
-    expect(sawTurn).toBe(true);
+  it('routes cars across the grid and completes trips', () => {
+    const scene = createScene(1);
+    for (let n = 0; n < 1200; n++) tick(scene.world);
     expect(scene.world.metrics.completedTrips).toBeGreaterThan(0);
+    expect(scene.world.agents.activeCount).toBeLessThanOrEqual(scene.world.agents.capacity);
   });
 
   it('setDemandRate turns inflow on and off', () => {
@@ -56,8 +46,8 @@ describe('fork scene + render data path', () => {
     for (let n = 0; n < 50; n++) tick(scene.world);
     expect(scene.world.agents.activeCount).toBe(0);
 
-    setDemandRate(scene, 2);
-    for (let n = 0; n < 120; n++) tick(scene.world);
+    setDemandRate(scene, 1);
+    for (let n = 0; n < 200; n++) tick(scene.world);
     expect(scene.world.agents.activeCount).toBeGreaterThan(0);
   });
 });

@@ -7,7 +7,7 @@ import { drawScene, type RenderCar } from '@/render/renderer';
 
 const SIM_DT = 0.2; // must match the engine's fixed timestep
 const MAX_STEPS = 5; // cap catch-up per frame to avoid a spiral of death
-const DEFAULT_DEMAND = 8; // slider units; rate = units * 0.1 cars/second
+const DEFAULT_DEMAND = 3; // slider units; rate = units * 0.1 cars/second per entry
 
 function unitsToRate(units: number): number {
   return units * 0.1;
@@ -133,7 +133,7 @@ export function SimulationCanvas() {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3 shadow-2xl">
-        <canvas ref={canvasRef} className="block h-[360px] w-full" />
+        <canvas ref={canvasRef} className="block h-[420px] w-full" />
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <button

@@ -6,14 +6,14 @@ export default function Home() {
       <div className="mx-auto max-w-4xl px-6 py-12">
         <header className="mb-8">
           <p className="mb-2 font-mono text-xs uppercase tracking-widest text-emerald-400/80">
-            Traffic engine · Etapa 5 — routing
+            Traffic engine · Etapa 6 — network
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">Urban Flow</h1>
           <p className="mt-2 max-w-prose text-neutral-400">
-            An agent-based mobility simulation on a deterministic fixed-step engine. Cars follow
-            the Intelligent Driver Model; colour encodes speed, from green (free flow) to red
-            (stopped). Each car is routed by shortest path (Dijkstra) to a destination: at the
-            fork, some continue straight while others turn — each choosing its own exit.
+            An agent-based mobility simulation on a deterministic fixed-step engine. A one-way
+            Manhattan grid: cars enter from the edges, are routed by shortest path (Dijkstra) to a
+            random exit, and turn and give way at each junction as they cross the network. Colour
+            encodes speed, from green (free flow) to red (stopped).
           </p>
         </header>
         <SimulationCanvas />

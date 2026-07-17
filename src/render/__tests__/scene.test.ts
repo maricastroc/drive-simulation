@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tick, type World } from '@/engine';
+import { tick, NONE, type World } from '@/engine';
 import { createScene, setDemandRate } from '../scene';
 import { placementAt } from '../geometry';
 
@@ -15,7 +15,7 @@ function avgSpeed(world: World): number {
   return n ? sum / n : 0;
 }
 
-describe('scene + render data path', () => {
+describe('crossing scene + render data path', () => {
   it('starts empty and fills from demand', () => {
     const scene = createScene(2);
     expect(scene.world.agents.activeCount).toBe(0);
@@ -29,23 +29,32 @@ describe('scene + render data path', () => {
     expect(avgSpeed(scene.world)).toBeGreaterThan(0);
   });
 
-  it('maps s linearly to world x along the straight lane', () => {
-    const scene = createScene(1);
-    const g = scene.geometry;
-    expect(placementAt(g, 0, 0).x).toBeCloseTo(0);
-    expect(placementAt(g, 0, 110).x).toBeCloseTo(110);
-    expect(placementAt(g, 0, scene.laneLength).x).toBeCloseTo(scene.laneLength);
+  it('geometry places lanes as a horizontal/vertical crossing', () => {
+    const g = createScene(1).geometry;
+    // Lane 0 (A) runs left -> junction; lane 2 (B) runs top -> junction.
+    expect(placementAt(g, 0, 0).x).toBeCloseTo(-100);
+    expect(placementAt(g, 0, 100).x).toBeCloseTo(0);
+    expect(placementAt(g, 2, 0).y).toBeCloseTo(-80);
+    expect(placementAt(g, 2, 80).y).toBeCloseTo(0);
   });
 
-  it('conserves flow: trips complete and population stays bounded', () => {
+  it('both movements run: cars reach the outgoing lanes and trips complete', () => {
     const scene = createScene(2);
-    for (let n = 0; n < 600; n++) tick(scene.world);
+    let sawMajorOut = false;
+    let sawMinorOut = false;
+    for (let n = 0; n < 800; n++) {
+      tick(scene.world);
+      if (scene.world.occ.head[1] !== NONE) sawMajorOut = true; // lane C
+      if (scene.world.occ.head[3] !== NONE) sawMinorOut = true; // lane D
+    }
+    expect(sawMajorOut).toBe(true);
+    expect(sawMinorOut).toBe(true);
     expect(scene.world.metrics.completedTrips).toBeGreaterThan(0);
     expect(scene.world.agents.activeCount).toBeLessThanOrEqual(scene.world.agents.capacity);
   });
 
   it('setDemandRate turns inflow on and off', () => {
-    const scene = createScene(0); // no demand
+    const scene = createScene(0); // no demand on either road
     for (let n = 0; n < 50; n++) tick(scene.world);
     expect(scene.world.agents.activeCount).toBe(0);
 

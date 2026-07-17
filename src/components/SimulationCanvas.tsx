@@ -20,6 +20,7 @@ export function SimulationCanvas() {
   const sceneRef = useRef<Scene | null>(null);
   const prevSRef = useRef<Float32Array | null>(null);
   const prevActiveRef = useRef<Uint8Array | null>(null);
+  const prevLaneRef = useRef<Int32Array | null>(null);
   const accRef = useRef(0);
   const lastTsRef = useRef(0);
 
@@ -40,11 +41,14 @@ export function SimulationCanvas() {
 
   const initScene = useCallback((units: number) => {
     const scene = createScene(unitsToRate(units));
+    const cap = scene.world.agents.capacity;
     sceneRef.current = scene;
-    prevSRef.current = new Float32Array(scene.world.agents.capacity);
-    prevActiveRef.current = new Uint8Array(scene.world.agents.capacity);
+    prevSRef.current = new Float32Array(cap);
+    prevActiveRef.current = new Uint8Array(cap);
+    prevLaneRef.current = new Int32Array(cap);
     prevSRef.current.set(scene.world.agents.s);
     prevActiveRef.current.set(scene.world.agents.active);
+    prevLaneRef.current.set(scene.world.agents.lane);
     accRef.current = 0;
   }, []);
 
@@ -73,6 +77,7 @@ export function SimulationCanvas() {
       const { agents } = world;
       const prevS = prevSRef.current!;
       const prevActive = prevActiveRef.current!;
+      const prevLane = prevLaneRef.current!;
 
       const last = lastTsRef.current || ts;
       let dtReal = (ts - last) / 1000;
@@ -85,6 +90,7 @@ export function SimulationCanvas() {
       while (accRef.current >= SIM_DT && steps < MAX_STEPS) {
         prevS.set(agents.s);
         prevActive.set(agents.active);
+        prevLane.set(agents.lane);
         tick(world);
         accRef.current -= SIM_DT;
         steps += 1;
@@ -96,15 +102,13 @@ export function SimulationCanvas() {
       let sumV = 0;
       for (let id = 0; id < agents.capacity; id++) {
         if (!agents.active[id]) continue;
+        const lane = agents.lane[id];
         const cur = agents.s[id];
-        // Interpolate only cars present in both snapshots; fresh spawns render at their spot.
-        const s = prevActive[id] ? prevS[id] + (cur - prevS[id]) * alpha : cur;
-        cars.push({
-          lane: agents.lane[id],
-          s,
-          length: world.vparams[agents.type[id]].length,
-          speedFrac: agents.v[id] / v0,
-        });
+        // Interpolate only cars present in both snapshots and still on the same lane; fresh
+        // spawns and cars that just crossed a junction render at their current spot.
+        const interp = prevActive[id] === 1 && prevLane[id] === lane;
+        const s = interp ? prevS[id] + (cur - prevS[id]) * alpha : cur;
+        cars.push({ lane, s, length: world.vparams[agents.type[id]].length, speedFrac: agents.v[id] / v0 });
         sumV += agents.v[id];
       }
 
@@ -129,7 +133,7 @@ export function SimulationCanvas() {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-white/10 bg-neutral-900/60 p-3 shadow-2xl">
-        <canvas ref={canvasRef} className="block h-[240px] w-full" />
+        <canvas ref={canvasRef} className="block h-[360px] w-full" />
       </div>
       <div className="flex flex-wrap items-center gap-3 text-sm">
         <button

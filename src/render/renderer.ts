@@ -9,8 +9,9 @@ export interface RenderCar {
 }
 
 /**
- * Draw the whole scene in CSS pixels. The caller is responsible for the device-pixel-ratio
- * transform on the context, so this function only ever thinks in CSS-pixel coordinates.
+ * Draw the whole scene in CSS pixels. The caller sets up the device-pixel-ratio transform, so
+ * this function only ever thinks in CSS pixels. The camera fits every lane's geometry into the
+ * canvas with a single uniform scale, so vertical roads read as vertical.
  */
 export function drawScene(
   ctx: CanvasRenderingContext2D,
@@ -20,35 +21,53 @@ export function drawScene(
   cars: readonly RenderCar[],
 ): void {
   const geom = scene.geometry;
-  const a = geom.a[0];
-  const b = geom.b[0];
+  const n = geom.a.length;
 
-  const padX = 48;
-  const scale = (width - 2 * padX) / scene.laneLength; // px per metre
-  const ox = padX;
-  const oy = height / 2;
-  const sx = (wx: number) => ox + wx * scale;
-  const sy = (wy: number) => oy + wy * scale;
+  // World-space bounds over every lane endpoint.
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < n; i++) {
+    for (const p of [geom.a[i], geom.b[i]]) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+  }
+  const pad = 36;
+  const spanX = Math.max(maxX - minX, 1);
+  const spanY = Math.max(maxY - minY, 1);
+  const scale = Math.min((width - 2 * pad) / spanX, (height - 2 * pad) / spanY);
+  const ox = (width - spanX * scale) / 2 - minX * scale;
+  const oy = (height - spanY * scale) / 2 - minY * scale;
+  const sx = (x: number) => ox + x * scale;
+  const sy = (y: number) => oy + y * scale;
 
   ctx.clearRect(0, 0, width, height);
-
-  // Road surface.
   ctx.lineCap = 'round';
+
+  // Road surfaces.
   ctx.strokeStyle = '#171a21';
   ctx.lineWidth = 6 * scale;
-  ctx.beginPath();
-  ctx.moveTo(sx(a.x), sy(a.y));
-  ctx.lineTo(sx(b.x), sy(b.y));
-  ctx.stroke();
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.moveTo(sx(geom.a[i].x), sy(geom.a[i].y));
+    ctx.lineTo(sx(geom.b[i].x), sy(geom.b[i].y));
+    ctx.stroke();
+  }
 
   // Centre dashes.
-  ctx.strokeStyle = 'rgba(148,163,184,0.22)';
-  ctx.lineWidth = Math.max(1, 0.18 * scale);
-  ctx.setLineDash([14, 16]);
-  ctx.beginPath();
-  ctx.moveTo(sx(a.x), sy(a.y));
-  ctx.lineTo(sx(b.x), sy(b.y));
-  ctx.stroke();
+  ctx.strokeStyle = 'rgba(148,163,184,0.18)';
+  ctx.lineWidth = Math.max(1, 0.16 * scale);
+  ctx.setLineDash([12, 14]);
+  for (let i = 0; i < n; i++) {
+    ctx.beginPath();
+    ctx.moveTo(sx(geom.a[i].x), sy(geom.a[i].y));
+    ctx.lineTo(sx(geom.b[i].x), sy(geom.b[i].y));
+    ctx.stroke();
+  }
   ctx.setLineDash([]);
 
   // Cars.

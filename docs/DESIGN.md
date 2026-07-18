@@ -495,10 +495,12 @@ made visible. Presentation-only; the route was already computed and stored, this
 the *interpolated* positions the loop stashes each frame) **and** the nearest junction, then picks the
 closer of the two — but a junction only loses to a car that is `JUNCTION_BIAS_PX` closer. A junction is a
 fixed control the user deliberately aims at, so this keeps intersections clickable in dense traffic (before
-the bias, a car crossing a node always stole the click); lanes are the fallback. `key` is the agent's
-`enterTime`: the free-list recycles slots, so `(id, key)` pins one specific vehicle and the trace
-self-clears the moment *its* car arrives (even if a new car reuses the slot the next tick). All in
-`render/carTrace.ts`, pure and unit-tested.
+the bias, a car crossing a node always stole the click); lanes are the fallback. This priority logic is a
+pure function — `hitTest(scene, cars, view, px, py)` in `components/sim/hitTest.ts` (takes plain data, no
+DOM; the component is a thin shell that reads the canvas rect) — so it is unit-tested in Node. `key` is the
+agent's `enterTime`: the free-list recycles slots, so `(id, key)` pins one specific vehicle and the trace
+self-clears the moment *its* car arrives (even if a new car reuses the slot the next tick); those helpers
+live in `render/carTrace.ts`, also pure and unit-tested.
 
 **The trace (`renderer.ts` `drawRoute`).** The route is the agent's `routeBuffer` slice; `routeIdx` splits
 it into covered (faint accent) and remaining (bright accent, with dashes flowing a→b toward a pulsing

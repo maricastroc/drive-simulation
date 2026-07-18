@@ -198,12 +198,12 @@ function ImpactRow({
   const pct = Math.max(-1, Math.min(1, rel));
   return (
     <div className="py-1.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[12.5px] text-(--text-2)">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="tnum text-[12px] text-(--text-3)">{a}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className="min-w-0 truncate text-[12.5px] text-(--text-2)">{label}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="tnum whitespace-nowrap text-[12px] text-(--text-3)">{a}</span>
           <IconArrow />
-          <span className="tnum text-[12.5px] font-semibold text-(--text-1)">{b}</span>
+          <span className="tnum whitespace-nowrap text-[12.5px] font-semibold text-(--text-1)">{b}</span>
           <span className="tnum w-14 text-right text-[11px] font-semibold" style={{ color: tone }}>
             {improved === null ? '±0' : `${delta > 0 ? '+' : ''}${(rel * 100).toFixed(0)}%`}
           </span>

@@ -123,6 +123,13 @@ Status: **16 etapas done, 86 vitest tests passing, typecheck + lint clean.**
   is more legible — a **heavy** orange tier in the `thermal` ramp, a **smoothstep** on per-lane `cong`,
   and a two-segment `asphalt()` with a hot **critical** tier, all O(lanes)/frame (60fps intact, and
   `shadowBlur` fires on fewer lanes). Verified live at ~200-car saturation.
+- **Extracted the click hit-test to a pure module (refactor)** — `SimulationCanvas` had grown back toward
+  the pre-split size; the highest-value, lowest-risk extraction was the click→selection logic, which was
+  already nearly pure. `hitTest(scene, cars, view, px, py)` now lives in `components/sim/hitTest.ts` (plain
+  data in, `Selection` out — no DOM; the component keeps only a rect-reading shell), so the car/junction/
+  lane priority + the `JUNCTION_BIAS_PX` rule are **unit-tested in Node** (6 cases, incl. the co-located-car
+  and bias-boundary fixes). `SimulationCanvas` 553 → 513 lines. Left the RAF loop in place — it is coupled
+  to ~15 refs, so extracting it would relocate lines without decoupling, at real regression risk.
 
 ## Quirks / gotchas
 

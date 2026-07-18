@@ -9,7 +9,6 @@ import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@
 import { type Preset } from '@/render/presets';
 import { generateCandidates, sweepBaseline, sweepCandidate, type SweepRow, type Candidate } from '@/render/optimize';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
-import { fitCamera, project, unproject, nearestLane, placementAt } from '@/render/geometry';
 import { drawScene, type RenderCar, type RenderOverlay } from '@/render/renderer';
 import {
   computeSelStats,
@@ -30,6 +29,7 @@ import { Inspector } from './sim/Inspector';
 import { Experiment } from './sim/Experiment';
 import { Optimizer } from './sim/Optimizer';
 import { WorkflowStep } from './sim/ui';
+import { hitTest } from './sim/hitTest';
 
 const SIM_DT = 0.2;
 const MAX_STEPS = 5;
@@ -40,10 +40,6 @@ const fmtClock = (sec: number) => {
   const t = Math.max(0, Math.floor(sec));
   return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 };
-const LANE_TOL_M = 7;
-const JUNCTION_TOL_PX = 15;
-const CAR_TOL_PX = 11;
-const JUNCTION_BIAS_PX = 4;
 const EMPTY_ROUTE: number[] = [];
 const SWEEP_TICKS = 300;
 const SWEEP_CHUNK = 2;
@@ -280,64 +276,28 @@ export function SimulationCanvas({ scenarioParam = null }: { scenarioParam?: str
     sampleRef.current = { t: world.time, trips: world.metrics.completedTrips };
   }, []);
 
-  const hitTest = useCallback((clientX: number, clientY: number): Selection => {
-    const scene = sceneRef.current;
+  // Thin shell over the pure `hitTest`: read the canvas rect + the latest cars,
+  // hand the rest off as plain data.
+  const hitTestAt = useCallback((clientX: number, clientY: number): Selection => {
     const canvas = canvasRef.current;
     if (!canvas) return NONE_SEL;
     const rect = canvas.getBoundingClientRect();
-    const px = clientX - rect.left;
-    const py = clientY - rect.top;
-    const cam = fitCamera(scene.geometry, rect.width, rect.height);
-
-    let bestCar = -1;
-    let bestKey = 0;
-    let bestCarD = CAR_TOL_PX;
-    for (const c of carsRef.current) {
-      const p = placementAt(scene.geometry, c.lane, c.s);
-      const sp = project(cam, p.x, p.y);
-      const d = Math.hypot(sp.x - px, sp.y - py);
-      if (d < bestCarD) {
-        bestCarD = d;
-        bestCar = c.id;
-        bestKey = c.key;
-      }
-    }
-
-    let bestJ = -1;
-    let bestJD = JUNCTION_TOL_PX;
-    scene.junctions.forEach((j, idx) => {
-      const sp = project(cam, j.pos.x, j.pos.y);
-      const d = Math.hypot(sp.x - px, sp.y - py);
-      if (d < bestJD) {
-        bestJD = d;
-        bestJ = idx;
-      }
-    });
-
-    if (bestJ >= 0 && (bestCar < 0 || bestJD <= bestCarD + JUNCTION_BIAS_PX)) {
-      return { kind: 'junction', j: bestJ };
-    }
-    if (bestCar >= 0) return { kind: 'car', id: bestCar, key: bestKey };
-
-    const world = unproject(cam, px, py);
-    const hit = nearestLane(scene.geometry, world, LANE_TOL_M);
-    if (hit.lane >= 0) return { kind: 'lane', lane: hit.lane, s: hit.s };
-    return NONE_SEL;
+    return hitTest(sceneRef.current, carsRef.current, rect, clientX - rect.left, clientY - rect.top);
   }, []);
 
   const onCanvasClick = useCallback(
-    (e: React.MouseEvent) => select(hitTest(e.clientX, e.clientY)),
-    [hitTest, select],
+    (e: React.MouseEvent) => select(hitTestAt(e.clientX, e.clientY)),
+    [hitTestAt, select],
   );
   const onCanvasMove = useCallback(
     (e: React.MouseEvent) => {
-      const hit = hitTest(e.clientX, e.clientY);
+      const hit = hitTestAt(e.clientX, e.clientY);
       hoverLaneRef.current = hit.kind === 'lane' ? hit.lane : -1;
       hoverJctRef.current = hit.kind === 'junction' ? hit.j : -1;
       const el = canvasRef.current;
       if (el) el.style.cursor = hit.kind === 'none' ? 'default' : 'pointer';
     },
-    [hitTest],
+    [hitTestAt],
   );
   const onCanvasLeave = useCallback(() => {
     hoverLaneRef.current = -1;

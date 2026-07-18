@@ -1,8 +1,69 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="64" height="64" rx="15" fill="#13161f"/>
-  <g transform="translate(16 16) scale(2)">
-    <path d="M2 5.5h12M2 10.5h12" stroke="#626a77" stroke-width="1.2" stroke-linecap="round"/>
-    <circle cx="5" cy="5.5" r="1.6" fill="#4f8ff7"/>
-    <circle cx="10.5" cy="10.5" r="1.6" fill="#37d29b"/>
+<svg width="512" height="512" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1A1E2B"/>
+      <stop offset="1" stop-color="#0C0F16"/>
+    </linearGradient>
+    <radialGradient id="tileGlow" cx="32" cy="14" r="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4C5A82" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#4C5A82" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="thermal" cx="32" cy="32" r="25" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF6A3D"/>
+      <stop offset="0.32" stop-color="#F59E0B"/>
+      <stop offset="0.56" stop-color="#2DD4A8"/>
+      <stop offset="0.80" stop-color="#22C4D6"/>
+      <stop offset="1" stop-color="#3E74E6"/>
+    </radialGradient>
+    <radialGradient id="core" cx="32" cy="32" r="5" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFF6EC"/>
+      <stop offset="0.5" stop-color="#FF9351"/>
+      <stop offset="1" stop-color="#F04E2C"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="32" cy="32" r="15" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FF7A45" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#F59E0B" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="1.7"/>
+    </filter>
+  </defs>
+
+  <!-- base -->
+  <rect width="64" height="64" rx="15" fill="url(#tile)"/>
+  <rect width="64" height="64" rx="15" fill="url(#tileGlow)"/>
+  <rect x="0.6" y="0.6" width="62.8" height="62.8" rx="14.4" fill="none" stroke="#FFFFFF" stroke-opacity="0.07"/>
+
+  <!-- rede fria: uma junção quente dentro de uma malha que flui -->
+  <g stroke="#5B6B90" stroke-opacity="0.15" stroke-width="0.9" stroke-linecap="round">
+    <path d="M18 11 V53"/><path d="M46 11 V53"/>
+    <path d="M11 18 H53"/><path d="M11 46 H53"/>
   </g>
+  <g fill="#5B6B90" fill-opacity="0.3">
+    <circle cx="18" cy="18" r="0.85"/><circle cx="46" cy="18" r="0.85"/>
+    <circle cx="18" cy="46" r="0.85"/><circle cx="46" cy="46" r="0.85"/>
+  </g>
+
+  <!-- calor da junção -->
+  <circle cx="32" cy="32" r="14" fill="url(#glow)" filter="url(#soft)"/>
+
+  <!-- vias: quentes na junção, esfriando até fluir nas bordas -->
+  <g stroke="url(#thermal)" stroke-width="4.6" stroke-linecap="round">
+    <path d="M8 32 H56"/>
+    <path d="M32 8 V56"/>
+  </g>
+
+  <!-- agentes: cápsula clara com nariz quase branco, entrando na junção -->
+  <g>
+    <rect x="12.2" y="30.7" width="5.6" height="2.6" rx="1.3" fill="#EAF1FF" stroke="#0D1017" stroke-opacity="0.5" stroke-width="0.4"/>
+    <rect x="16.2" y="30.8" width="1.5" height="2.4" rx="0.75" fill="#FFFFFF"/>
+    <rect x="30.7" y="46.2" width="2.6" height="5.6" rx="1.3" fill="#EAF1FF" stroke="#0D1017" stroke-opacity="0.5" stroke-width="0.4"/>
+    <rect x="30.8" y="46.3" width="2.4" height="1.5" rx="0.75" fill="#FFFFFF"/>
+  </g>
+
+  <!-- núcleo: o nó mais quente da rede -->
+  <circle cx="32" cy="32" r="5.6" fill="none" stroke="#FF9351" stroke-opacity="0.55" stroke-width="0.9"/>
+  <circle cx="32" cy="32" r="4.4" fill="url(#core)"/>
+  <circle cx="32" cy="32" r="1.8" fill="#FFF7EF"/>
 </svg>

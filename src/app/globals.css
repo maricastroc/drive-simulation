@@ -21,10 +21,12 @@
   --text-2: #9ba3b0;
   --text-3: #626a77;
 
-  /* Accent (interaction / selection) + status */
-  --accent: #4f8ff7;
-  --accent-2: #6aa6ff;
-  --accent-soft: rgba(79, 143, 247, 0.14);
+  /* Accent (interaction / selection) + status.
+     UI-chrome blue, ~12% less saturated than the vivid canvas accent so solid
+     CTAs read as calm, not shouting; same hue + lightness keeps the contrast. */
+  --accent: #5c92eb;
+  --accent-2: #75a8f5;
+  --accent-soft: rgba(92, 146, 235, 0.14);
   --good: #37d29b;
   --warn: #f4b740;
   --bad: #fb6a68;

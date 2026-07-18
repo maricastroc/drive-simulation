@@ -55,7 +55,9 @@ export function Optimizer({
           onClick={onRun}
           disabled={running}
           className={`w-full rounded-lg px-3 py-2 text-[13px] font-semibold transition-all duration-150 disabled:cursor-not-allowed ${
-            running ? 'bg-(--surface-2) text-(--text-2)' : 'bg-(--accent) text-white hover:brightness-110'
+            running
+              ? 'bg-(--surface-2) text-(--text-2)'
+              : 'bg-transparent text-(--accent-2) ring-1 ring-(--accent)/30 hover:bg-(--accent-soft) hover:text-(--accent)'
           }`}
         >
           {running ? `Testing ${done}/${total}…` : 'Find the best fix'}

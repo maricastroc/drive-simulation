@@ -17,6 +17,8 @@
   <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
 </p>
 
+🔗 Live demo: urban-system.marianacastro.dev
+
 <p align="center">
   <a href="#-features">Features</a> •
   <a href="#-the-simulation-engine">Simulation Engine</a> •

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import {
   toggleLaneClosed,
   toggleIncident,
@@ -19,6 +20,7 @@ export function Inspector({
   bump,
   onClear,
   sinkLabelOf,
+  pulseJunction,
 }: {
   scene: Scene;
   sel: Selection;
@@ -26,6 +28,7 @@ export function Inspector({
   bump: () => void;
   onClear: () => void;
   sinkLabelOf: (sink: number) => string;
+  pulseJunction: (j: number) => void;
 }) {
   if (sel.kind === 'none') return <InspectorEmpty />;
 
@@ -35,7 +38,7 @@ export function Inspector({
       key={sel.kind === 'lane' ? `l${sel.lane}` : sel.kind === 'car' ? `c${sel.id}` : `j${sel.j}`}
     >
       {sel.kind === 'junction' ? (
-        <JunctionInspector scene={scene} j={sel.j} stats={stats} bump={bump} onClear={onClear} />
+        <JunctionInspector scene={scene} j={sel.j} stats={stats} bump={bump} onClear={onClear} pulseJunction={pulseJunction} />
       ) : sel.kind === 'car' ? (
         <CarInspector stats={stats} onClear={onClear} sinkLabelOf={sinkLabelOf} />
       ) : (
@@ -248,15 +251,44 @@ function JunctionInspector({
   stats,
   bump,
   onClear,
+  pulseJunction,
 }: {
   scene: Scene;
   j: number;
   stats: SelStats | null;
   bump: () => void;
   onClear: () => void;
+  pulseJunction: (j: number) => void;
 }) {
   const signalized = scene.signals[j]?.enabled === true;
   const js = stats?.kind === 'junction' ? stats : null;
+
+  // Transient textual confirmation after an intervention (clears itself after 2s).
+  const [note, setNote] = useState<{ text: string; id: number } | null>(null);
+  const noteId = useRef(0);
+  useEffect(() => {
+    if (!note) return;
+    const t = setTimeout(() => setNote(null), 2000);
+    return () => clearTimeout(t);
+  }, [note]);
+  const confirm = (text: string) => {
+    noteId.current += 1;
+    setNote({ text, id: noteId.current });
+  };
+
+  const stageSignal = () => {
+    const willEnable = !signalized;
+    toggleSignal(scene, j);
+    bump();
+    pulseJunction(j);
+    confirm(willEnable ? 'Signals staged' : 'Signals removed');
+  };
+  const stagePriority = () => {
+    flipPriority(scene, j);
+    bump();
+    pulseJunction(j);
+    confirm('Priority flipped');
+  };
 
   return (
     <>
@@ -272,13 +304,23 @@ function JunctionInspector({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <ActionButton active={signalized} activeTone="warn" onClick={() => { toggleSignal(scene, j); bump(); }}>
+        <ActionButton active={signalized} activeTone="warn" onClick={stageSignal}>
           {signalized ? 'Signals on' : 'Add signals'}
         </ActionButton>
-        <ActionButton disabled={signalized} onClick={() => { flipPriority(scene, j); bump(); }}>
+        <ActionButton
+          disabled={signalized}
+          onClick={stagePriority}
+          tooltip={signalized ? 'Disable signals to edit junction priority.' : undefined}
+        >
           Flip priority
         </ActionButton>
       </div>
+      {note && (
+        <p key={note.id} className="anim-up mt-2 flex items-center gap-1.5 text-[11.5px] font-semibold text-(--good)">
+          <span aria-hidden>✓</span>
+          {note.text}
+        </p>
+      )}
       <p className="mt-3 text-[11.5px] leading-snug text-(--text-3)">
         {signalized
           ? 'Approaches alternate green on a fixed cycle.'

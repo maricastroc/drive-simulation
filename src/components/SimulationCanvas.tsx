@@ -1,5 +1,7 @@
 'use client';
 
+import 'react-tooltip/dist/react-tooltip.css';
+import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
 import { createScene, setDemandRate, sampleStats, runExperiment, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
@@ -55,6 +57,7 @@ export function SimulationCanvas() {
   const selRef = useRef<Selection>(NONE_SEL);
   const hoverLaneRef = useRef(-1);
   const hoverJctRef = useRef(-1);
+  const stagedRef = useRef({ junction: -1, at: 0 });
   const carsRef = useRef<RenderCar[]>([]);
 
   const hudCars = useRef<HTMLSpanElement>(null);
@@ -186,11 +189,16 @@ export function SimulationCanvas() {
   const stageCandidate = useCallback(
     (c: Candidate) => {
       c.apply(sceneRef.current);
+      stagedRef.current = { junction: c.junction, at: performance.now() };
       select({ kind: 'junction', j: c.junction });
       bump();
     },
     [select, bump],
   );
+
+  const pulseJunction = useCallback((j: number) => {
+    stagedRef.current = { junction: j, at: performance.now() };
+  }, []);
 
   const fastForward = useCallback(() => {
     const world = sceneRef.current.world;
@@ -340,6 +348,8 @@ export function SimulationCanvas() {
         carRoute: carRouteLanes,
         carRouteIdx: carRouteI,
         now: ts,
+        stagedJunction: stagedRef.current.junction,
+        stagedAt: stagedRef.current.at,
       };
       drawScene(ctx, canvas.clientWidth, canvas.clientHeight, scene, cars, overlay);
 
@@ -425,7 +435,7 @@ export function SimulationCanvas() {
         </div>
 
         <aside className="thin-scroll flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-t border-(--border) p-3 lg:w-92 lg:border-l lg:border-t-0">
-          <Inspector scene={scene} sel={sel} stats={selStats} bump={bump} onClear={() => select(NONE_SEL)} sinkLabelOf={sinkLabelOf} />
+          <Inspector scene={scene} sel={sel} stats={selStats} bump={bump} onClear={() => select(NONE_SEL)} sinkLabelOf={sinkLabelOf} pulseJunction={pulseJunction} />
           <Telemetry flowSpark={flowSparkRef} speedSpark={speedSparkRef} freeKmh={freeKmh} />
           <Presets onApply={applyPreset} />
           <Experiment
@@ -447,6 +457,8 @@ export function SimulationCanvas() {
           />
         </aside>
       </div>
+
+      <Tooltip id="uf-tip" className="uf-tooltip" classNameArrow="uf-tooltip-arrow" place="top" />
     </div>
   );
 }

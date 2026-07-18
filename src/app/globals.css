@@ -194,3 +194,27 @@ body {
   background: rgba(255, 255, 255, 0.18);
   background-clip: padding-box;
 }
+
+/* ── Tooltip (react-tooltip, themed to match cards) ─────────────────────────
+   Two-class specificity (0,2,0) beats react-tooltip's injected single-class
+   rules regardless of load order. Colours are driven through its own tokens
+   (--rt-color-dark = surface, --rt-color-white = text) so the arrow (which
+   inherits the background) follows automatically. */
+.react-tooltip.uf-tooltip {
+  --rt-color-dark: var(--surface-2);
+  --rt-color-white: var(--text-1);
+  --rt-opacity: 1;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 500;
+  max-width: 220px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  z-index: 60;
+}
+.react-tooltip-arrow.uf-tooltip-arrow {
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}

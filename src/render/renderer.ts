@@ -32,6 +32,10 @@ export interface RenderOverlay {
   readonly carRoute: readonly number[];
   readonly carRouteIdx: number;
   readonly now: number;
+  /** Junction that was just staged (optimizer/inspector), or -1. Fires a one-shot pulse. */
+  readonly stagedJunction: number;
+  /** Timestamp (same clock as `now`) when it was staged. */
+  readonly stagedAt: number;
 }
 
 const NO_OVERLAY: RenderOverlay = {
@@ -43,7 +47,12 @@ const NO_OVERLAY: RenderOverlay = {
   carRoute: [],
   carRouteIdx: -1,
   now: 0,
+  stagedJunction: -1,
+  stagedAt: 0,
 };
+
+/** Duration of the one-shot ring that confirms a staged intervention. */
+const STAGE_PULSE_MS = 900;
 
 const ACCENT: RGB = [96, 165, 250];
 const STOP_EPS = 0.14;
@@ -171,9 +180,12 @@ export function drawScene(
       activity += load[ap.fromLane];
       queue += stopped[ap.fromLane];
     }
+    const stagedT =
+      idx === overlay.stagedJunction ? (now - overlay.stagedAt) / STAGE_PULSE_MS : -1;
     drawJunction(ctx, jp, j, control, scene.signals[idx]?.enabled === true, activity, queue, {
       selected: idx === overlay.selectedJunction,
       hovered: idx === overlay.hoverJunction,
+      stagedT,
       now,
       A,
       B,
@@ -310,6 +322,8 @@ function drawCar(
 interface JOpts {
   selected: boolean;
   hovered: boolean;
+  /** One-shot staged-pulse progress 0→1, or <0 when not staged. */
+  stagedT: number;
   now: number;
   A: Pt[];
   B: Pt[];
@@ -395,6 +409,17 @@ function drawJunction(
     const t = (o.now / 1400) % 1;
     ring(ctx, jp.x, jp.y, r0 + 2 + t * 9, rgba(ACCENT, 0.5 * (1 - t)), 1.6);
     ring(ctx, jp.x, jp.y, r0 + 2.5, rgba(ACCENT, 0.9), 1.6);
+  }
+  if (o.stagedT >= 0 && o.stagedT <= 1) {
+    // One-shot confirmation: a bright ring bursts out from the node and fades,
+    // pulling the eye from the sidebar click to the change on the map.
+    const s = o.stagedT;
+    const ease = 1 - (1 - s) * (1 - s);
+    ctx.save();
+    ctx.shadowColor = rgba(ACCENT, 0.9);
+    ctx.shadowBlur = 10 * (1 - s);
+    ring(ctx, jp.x, jp.y, r0 + 2 + ease * 26, rgba(ACCENT, 0.85 * (1 - s)), 2.2 * (1 - 0.5 * s));
+    ctx.restore();
   }
 }
 

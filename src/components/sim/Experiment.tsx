@@ -9,7 +9,7 @@ const METRICS: { label: string; get: (s: Stats) => number; fmt: (n: number) => s
   { label: 'Avg trip time', get: (s) => s.avgTravelTime, fmt: (n) => (n ? `${Math.round(n)} s` : '—'), better: 'down' },
 ];
 
-const mins = (ticks: number) => `${Math.round(ticks / 300)}m`;
+const mins = (ticks: number) => `${Math.round(ticks / 300)} min`;
 
 export function Experiment({
   result,
@@ -35,6 +35,7 @@ export function Experiment({
         <div className="eyebrow">Controlled experiment · A/B</div>
       </div>
 
+      <div className="eyebrow mb-1.5">Simulation time</div>
       <div className="mb-2 flex rounded-lg bg-(--surface-3) p-0.5">
         {EXPERIMENT_DURATIONS.map((t) => (
           <button

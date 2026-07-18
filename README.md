@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  🔗 <strong>Live demo:</strong> <a href="https://book-nest.marianacastro.dev">book-nest.marianacastro.dev</a>
+  🔗 <strong>Live demo:</strong> <a href="https://urban-system.marianacastro.dev">urban-system.marianacastro.dev</a>
 </p>
 
 <br/>

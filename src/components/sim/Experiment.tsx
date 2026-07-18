@@ -156,7 +156,7 @@ export function Experiment({
               )}
               {/* Run averages — "Avg" labels + the "N min run" tag above keep these
                   from being mistaken for the header's live km/h (window vs. now). */}
-              <div className="mt-3 flex flex-col gap-1 border-t border-(--border) pt-3">
+              <div className="mt-3 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-x-2 gap-y-0 border-t border-(--border) pt-3">
                 {SECONDARY.map((m) => {
                   const a = m.get(result.baseline);
                   const b = m.get(result.intervention);
@@ -196,20 +196,18 @@ function ImpactRow({
   const improved = Math.abs(delta) < 1e-6 ? null : (delta > 0) === (better === 'up');
   const tone = improved === null ? 'var(--text-3)' : improved ? 'var(--good)' : 'var(--bad)';
   const pct = Math.max(-1, Math.min(1, rel));
+  // display:contents lets each row's cells participate in the shared parent grid,
+  // so the value/arrow/delta columns line up vertically across both rows.
   return (
-    <div className="py-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <span className="min-w-0 truncate text-[12.5px] text-(--text-2)">{label}</span>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="tnum whitespace-nowrap text-[12px] text-(--text-3)">{a}</span>
-          <IconArrow />
-          <span className="tnum whitespace-nowrap text-[12.5px] font-semibold text-(--text-1)">{b}</span>
-          <span className="tnum w-14 text-right text-[11px] font-semibold" style={{ color: tone }}>
-            {improved === null ? '±0' : `${delta > 0 ? '+' : ''}${(rel * 100).toFixed(0)}%`}
-          </span>
-        </div>
-      </div>
-      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-(--surface-3)">
+    <div className="contents">
+      <span className="whitespace-nowrap pt-1.5 text-[12.5px] text-(--text-2)">{label}</span>
+      <span className="tnum whitespace-nowrap pt-1.5 text-right text-[12px] text-(--text-3)">{a}</span>
+      <span className="pt-1.5 text-(--text-3)"><IconArrow /></span>
+      <span className="tnum whitespace-nowrap pt-1.5 text-[12.5px] font-semibold text-(--text-1)">{b}</span>
+      <span className="tnum w-14 pt-1.5 text-right text-[11px] font-semibold" style={{ color: tone }}>
+        {improved === null ? '±0' : `${delta > 0 ? '+' : ''}${(rel * 100).toFixed(0)}%`}
+      </span>
+      <div className="col-span-full mt-1.5 mb-1.5 h-1 overflow-hidden rounded-full bg-(--surface-3)">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.abs(pct) * 100}%`, marginLeft: pct < 0 ? `${(1 - Math.abs(pct)) * 100}%` : 0, background: tone }} />
       </div>
     </div>

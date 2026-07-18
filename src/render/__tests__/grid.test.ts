@@ -34,7 +34,7 @@ function noOverlapAll(world: World): boolean {
 describe('grid: generated Manhattan network', () => {
   it('builds a 2x2 grid with four entries and four exits', () => {
     const { sources, sinks, graph } = buildGrid(2, 2);
-    expect(graph.laneCount).toBe(12); // 2 rows*3 segments + 2 cols*3 segments
+    expect(graph.laneCount).toBe(12);
     expect(sources.length).toBe(4);
     expect(sinks.length).toBe(4);
   });

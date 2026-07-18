@@ -71,10 +71,10 @@ describe('controlled A/B experiment', () => {
     const cleanBaseline = runExperiment(createScene(0.6), 400).baseline;
 
     const scene = createScene(0.6);
-    toggleLaneClosed(scene, scene.sources[0].lane); // shut one entry
+    toggleLaneClosed(scene, scene.sources[0].lane);
     const r = runExperiment(scene, 400);
 
-    expect(r.baseline).toEqual(cleanBaseline); // baseline is the clean network, unaffected
+    expect(r.baseline).toEqual(cleanBaseline);
     expect(r.changes).toContain('1 road closed');
     const differs =
       r.intervention.cars !== r.baseline.cars ||

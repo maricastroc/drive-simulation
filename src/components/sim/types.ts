@@ -8,7 +8,7 @@ export type Selection =
   | { kind: 'none' }
   | { kind: 'lane'; lane: number; s: number }
   | { kind: 'junction'; j: number }
-  | { kind: 'car'; id: number; key: number }; // key = enterTime, pins identity across slot reuse
+  | { kind: 'car'; id: number; key: number };
 
 export const NONE_SEL: Selection = { kind: 'none' };
 
@@ -22,7 +22,7 @@ export function computeSelStats(scene: Scene, sel: Selection): SelStats | null {
   const { agents, occ, graph, vparams } = scene.world;
 
   if (sel.kind === 'car') {
-    if (!isSelectedCarLive(scene.world, sel.id, sel.key)) return null; // arrived / recycled
+    if (!isSelectedCarLive(scene.world, sel.id, sel.key)) return null;
     const r = carRoute(scene.world, sel.id);
     const v0 = graph.speedLimit[agents.lane[sel.id]] * vparams[0].v0Factor;
     return {
@@ -63,7 +63,6 @@ export function computeSelStats(scene: Scene, sel: Selection): SelStats | null {
   };
 }
 
-// Compass label (N/E/S/W + per-side index) for each perimeter lane endpoint.
 export function compassLabels(pts: { x: number; y: number }[]): string[] {
   if (pts.length === 0) return [];
   const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
@@ -80,7 +79,10 @@ export function compassLabels(pts: { x: number; y: number }[]): string[] {
 
 export function scenarioChanged(scene: Scene): boolean {
   const c = scene.world.control;
+  const conns = scene.world.graph.connections;
   for (let i = 0; i < c.laneClosed.length; i++) if (c.laneClosed[i] === 1) return true;
   for (let i = 0; i < c.incidentAt.length; i++) if (c.incidentAt[i] < Infinity) return true;
-  return c.signals.some((s) => s.enabled);
+  if (c.signals.some((s) => s.enabled)) return true;
+  for (let i = 0; i < c.rank.length; i++) if (c.rank[i] !== conns[i].rank) return true; // priority flipped
+  return false;
 }

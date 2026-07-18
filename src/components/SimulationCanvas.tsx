@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
-import { createScene, setDemandRate, sampleStats, runExperiment, type Scene, type ExperimentResult } from '@/render/scene';
+import { createScene, setDemandRate, sampleStats, runExperiment, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
 import { type Preset } from '@/render/presets';
+import { generateCandidates, sweepBaseline, sweepCandidate, type SweepRow, type Candidate } from '@/render/optimize';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
 import { fitCamera, project, unproject, nearestLane, placementAt } from '@/render/geometry';
 import { drawScene, type RenderCar, type RenderOverlay } from '@/render/renderer';
@@ -23,15 +24,18 @@ import { Presets } from './sim/Presets';
 import { Coach } from './sim/Coach';
 import { Inspector } from './sim/Inspector';
 import { Experiment } from './sim/Experiment';
+import { Optimizer } from './sim/Optimizer';
 
 const SIM_DT = 0.2;
 const MAX_STEPS = 5;
-const SAMPLE_DT = 1.0; // sim-seconds between sparkline samples
+const SAMPLE_DT = 1.0;
 const DEFAULT_DEMAND = 4;
 const LANE_TOL_M = 7;
 const JUNCTION_TOL_PX = 15;
 const CAR_TOL_PX = 11;
 const EMPTY_ROUTE: number[] = [];
+const SWEEP_TICKS = 300;
+const SWEEP_CHUNK = 2;
 
 export function SimulationCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,9 +54,8 @@ export function SimulationCanvas() {
   const selRef = useRef<Selection>(NONE_SEL);
   const hoverLaneRef = useRef(-1);
   const hoverJctRef = useRef(-1);
-  const carsRef = useRef<RenderCar[]>([]); // last frame's cars (interpolated), for car picking
+  const carsRef = useRef<RenderCar[]>([]);
 
-  // Live HUD readouts update imperatively each frame (refs + tween) to avoid 60fps React renders.
   const hudCars = useRef<HTMLSpanElement>(null);
   const hudFlow = useRef<HTMLSpanElement>(null);
   const hudSpeed = useRef<HTMLSpanElement>(null);
@@ -60,8 +63,6 @@ export function SimulationCanvas() {
   const dispRef = useRef({ cars: 0, flow: 0, speed: 0 });
   const flowRef = useRef({ t: 0, trips: 0, val: 0 });
 
-  // Rolling metric sparklines: sampled on sim-time (SAMPLE_DT) so the window is a
-  // fixed 60s regardless of playback speed; updated imperatively via handles.
   const flowSparkRef = useRef<SparkHandle>(null);
   const speedSparkRef = useRef<SparkHandle>(null);
   const sampleRef = useRef({ t: 0, trips: 0 });
@@ -81,6 +82,9 @@ export function SimulationCanvas() {
   const [expRunning, setExpRunning] = useState(false);
   const [expDuration, setExpDuration] = useState(600);
   const [coachDismissed, setCoachDismissed] = useState(false);
+  const [sweepRunning, setSweepRunning] = useState(false);
+  const [sweepProg, setSweepProg] = useState({ done: 0, total: 0 });
+  const [sweepResult, setSweepResult] = useState<{ baseline: Stats; rows: SweepRow[] } | null>(null);
 
   useEffect(() => void (playingRef.current = playing), [playing]);
   useEffect(() => void (speedRef.current = speed), [speed]);
@@ -89,7 +93,6 @@ export function SimulationCanvas() {
     setDemandRate(sceneRef.current, unitsToRate(demand));
   }, [demand]);
 
-  // Keep the loop's scene pointer + interpolation buffers in sync with the (re)built scene.
   useEffect(() => {
     sceneRef.current = scene;
     const cap = scene.world.agents.capacity;
@@ -117,7 +120,7 @@ export function SimulationCanvas() {
     const id = window.setInterval(() => {
       const st = computeSelStats(sceneRef.current, selRef.current);
       if (st === null && selRef.current.kind === 'car') {
-        setSel(NONE_SEL); // the traced car reached its destination
+        setSel(NONE_SEL);
         setSelStats(null);
       } else {
         setSelStats(st);
@@ -131,9 +134,9 @@ export function SimulationCanvas() {
     setSel(NONE_SEL);
     setSelStats(null);
     setExpResult(null);
+    setSweepResult(null);
   }, [demand]);
 
-  // Stage a one-click scenario on a fresh network: preset demand + its intervention.
   const applyPreset = useCallback((preset: Preset) => {
     const staged = createScene(preset.demandRate);
     preset.stage?.(staged);
@@ -142,6 +145,7 @@ export function SimulationCanvas() {
     setSel(NONE_SEL);
     setSelStats(null);
     setExpResult(null);
+    setSweepResult(null);
   }, []);
 
   const runExp = useCallback(() => {
@@ -152,7 +156,41 @@ export function SimulationCanvas() {
     }, 30);
   }, [expDuration]);
 
-  // Fast-forward the live sim by 60s of sim time, headless; then resync interpolation.
+  const runSweep = useCallback(() => {
+    const scene = sceneRef.current;
+    const candidates = generateCandidates(scene);
+    setSweepRunning(true);
+    setSweepResult(null);
+    setSweepProg({ done: 0, total: candidates.length });
+    window.setTimeout(() => {
+      const base = sweepBaseline(scene, SWEEP_TICKS);
+      const rows: SweepRow[] = [];
+      let i = 0;
+      const step = () => {
+        const end = Math.min(i + SWEEP_CHUNK, candidates.length);
+        for (; i < end; i++) rows.push(sweepCandidate(base, candidates[i], SWEEP_TICKS));
+        setSweepProg({ done: i, total: candidates.length });
+        if (i < candidates.length) {
+          window.setTimeout(step, 0);
+        } else {
+          rows.sort((a, b) => b.tripsDelta - a.tripsDelta || b.speedDelta - a.speedDelta);
+          setSweepResult({ baseline: base.stats, rows });
+          setSweepRunning(false);
+        }
+      };
+      step();
+    }, 30);
+  }, []);
+
+  const stageCandidate = useCallback(
+    (c: Candidate) => {
+      c.apply(sceneRef.current);
+      select({ kind: 'junction', j: c.junction });
+      bump();
+    },
+    [select, bump],
+  );
+
   const fastForward = useCallback(() => {
     const world = sceneRef.current.world;
     for (let i = 0; i < 300; i++) tick(world);
@@ -162,7 +200,6 @@ export function SimulationCanvas() {
     accRef.current = 0;
     lastTsRef.current = 0;
     flowRef.current = { t: world.time, trips: world.metrics.completedTrips, val: 0 };
-    // Rebase the sampler to the post-jump clock so the next sample isn't a 60s spike.
     sampleRef.current = { t: world.time, trips: world.metrics.completedTrips };
   }, []);
 
@@ -175,8 +212,6 @@ export function SimulationCanvas() {
     const py = clientY - rect.top;
     const cam = fitCamera(scene.geometry, rect.width, rect.height);
 
-    // Cars first — the smallest, most specific target (tight tolerance so it doesn't
-    // steal clicks meant for a junction node or a road).
     let bestCar = -1;
     let bestKey = 0;
     let bestCarD = CAR_TOL_PX;
@@ -323,7 +358,6 @@ export function SimulationCanvas() {
       if (hudSpeed.current) hudSpeed.current.textContent = String(Math.round(d.speed));
       if (hudTrips.current) hudTrips.current.textContent = String(st.completedTrips);
 
-      // Feed the rolling sparklines once per SAMPLE_DT of sim-time (paused → no push).
       const smp = sampleRef.current;
       const dtS = world.time - smp.t;
       if (dtS >= SAMPLE_DT) {
@@ -356,7 +390,7 @@ export function SimulationCanvas() {
   const coachStep = !changed ? 0 : !expResult ? 1 : 2;
 
   return (
-    <div className="flex h-dvh flex-col bg-[var(--bg)] text-[var(--text-1)]">
+    <div className="flex h-dvh flex-col bg-(--bg) text-(--text-1)">
       <TopBar
         playing={playing}
         hudCars={hudCars}
@@ -392,7 +426,7 @@ export function SimulationCanvas() {
           {!coachDismissed && coachStep < 2 && <Coach step={coachStep} onDismiss={() => setCoachDismissed(true)} />}
         </div>
 
-        <aside className="thin-scroll flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-t border-[var(--border)] p-3 lg:w-[368px] lg:border-l lg:border-t-0">
+        <aside className="thin-scroll flex w-full shrink-0 flex-col gap-3 overflow-y-auto border-t border-(--border) p-3 lg:w-92 lg:border-l lg:border-t-0">
           <Inspector scene={scene} sel={sel} stats={selStats} bump={bump} onClear={() => select(NONE_SEL)} sinkLabelOf={sinkLabelOf} />
           <Presets onApply={applyPreset} />
           <Experiment
@@ -403,6 +437,14 @@ export function SimulationCanvas() {
             onRun={runExp}
             hasIntervention={changed}
             highlight={!coachDismissed && coachStep === 1}
+          />
+          <Optimizer
+            running={sweepRunning}
+            done={sweepProg.done}
+            total={sweepProg.total}
+            result={sweepResult}
+            onRun={runSweep}
+            onStage={stageCandidate}
           />
         </aside>
       </div>

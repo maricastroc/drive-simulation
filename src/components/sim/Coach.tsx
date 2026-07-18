@@ -10,15 +10,15 @@ export function Coach({ step, onDismiss }: { step: number; onDismiss: () => void
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center px-3">
       <div
-        className="anim-up pointer-events-auto flex max-w-[420px] items-start gap-3 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-1)]/95 py-2.5 pl-3 pr-2.5 backdrop-blur-md"
+        className="anim-up pointer-events-auto flex max-w-105 items-start gap-3 rounded-xl border border-(--border-strong) bg-(--surface-1)/95 py-2.5 pl-3 pr-2.5 backdrop-blur-md"
         style={{ boxShadow: 'var(--shadow-float)' }}
       >
-        <div className="tnum mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-[11px] font-bold text-[var(--accent-2)]">
+        <div className="tnum mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-(--accent-soft) text-[11px] font-bold text-(--accent-2)">
           {step + 1}
         </div>
         <div className="min-w-0">
           <div className="text-[13px] font-semibold leading-tight">{s.title}</div>
-          <div className="mt-0.5 text-[12px] leading-snug text-[var(--text-2)]">{s.body}</div>
+          <div className="mt-0.5 text-[12px] leading-snug text-(--text-2)">{s.body}</div>
           <div className="mt-2 flex items-center gap-1.5">
             {COACH_STEPS.map((_, i) => (
               <span
@@ -32,7 +32,7 @@ export function Coach({ step, onDismiss }: { step: number; onDismiss: () => void
         <button
           onClick={onDismiss}
           aria-label="Dismiss"
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[var(--text-3)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-(--text-3) transition-colors hover:bg-(--surface-3) hover:text-(--text-1)"
         >
           <IconClose />
         </button>

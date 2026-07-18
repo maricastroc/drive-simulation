@@ -6,12 +6,12 @@ export interface Point {
 export interface Placement {
   readonly x: number;
   readonly y: number;
-  readonly heading: number; // radians
+  readonly heading: number;
 }
 
 export interface LaneGeometry {
-  readonly a: readonly Point[]; // per lane: start point
-  readonly b: readonly Point[]; // per lane: end point
+  readonly a: readonly Point[];
+  readonly b: readonly Point[];
 }
 
 export function placementAt(geom: LaneGeometry, lane: number, s: number): Placement {
@@ -24,7 +24,6 @@ export function placementAt(geom: LaneGeometry, lane: number, s: number): Placem
   return { x: a.x + dx * t, y: a.y + dy * t, heading: Math.atan2(dy, dx) };
 }
 
-// One uniform world→screen camera, shared by the renderer and the canvas hit-testing.
 export interface Camera {
   readonly scale: number;
   readonly ox: number;
@@ -60,7 +59,6 @@ export function unproject(cam: Camera, px: number, py: number): Point {
   return { x: (px - cam.ox) / cam.scale, y: (py - cam.oy) / cam.scale };
 }
 
-// Nearest lane to world point `p` within `tol` metres (lane = -1 if none), plus its position `s`.
 export function nearestLane(geom: LaneGeometry, p: Point, tol: number): { lane: number; s: number } {
   let best = -1;
   let bestD = tol;

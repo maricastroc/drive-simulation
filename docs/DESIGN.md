@@ -158,6 +158,8 @@ uniformly (seeded) and points the agent's `routeStart/End/Idx` at the slice.
   `centralJunction` (grid-geometry-derived), so a preset stages the same thing every run (unit-tested).
 - `carTrace.ts` — pure helpers for the car-route trace (§22): `carRoute` (an agent's `routeBuffer`
   slice + current index), `carProgress` (0..1 by distance), `isSelectedCarLive` (identity via enterTime).
+- `optimize.ts` — the experiment optimizer (§23): `generateCandidates` (signalize/flip-priority per
+  junction) + `sweepBaseline`/`sweepCandidate`, each a controlled headless run against one shared baseline.
 - `grid.ts` — `buildGrid(rows, cols)` **procedurally generates a one-way Manhattan grid**: streets
   alternate direction by row/column; each junction wires straight + turn movements with
   **over-declared per-node conflicts** (every movement conflicts with every movement from another
@@ -415,6 +417,30 @@ the intervention presets flip it on and auto-advance the coach to "run the A/B".
 **UI (`components/sim/Presets.tsx`).** A card in the right rail between the inspector and the experiment —
 each preset a button with a semantic dot (amber/red/accent), title, and one-line description. It reads as
 "quick-start scenarios", upstream of the manual inspector controls and the A/B that consumes them.
+
+## 23. The experiment optimizer (Etapa 15)
+
+The controlled A/B (§19) answers "did *this* change help?". The optimizer answers "**which** change helps
+most?" — the point where a deterministic, headless core stops being a sandbox and becomes a decision tool.
+
+**The sweep (`render/optimize.ts`).** `generateCandidates(scene)` enumerates one intervention per lever per
+junction — *signalize J* and *flip priority at J*. `sweepBaseline` runs the current demand with **no**
+intervention once; `sweepCandidate` runs the same demand + exactly one intervention on a fresh, same-seed
+world for the same duration. Every candidate is thus a §19-style controlled experiment sharing one
+baseline, so ~50 candidates cost ~51 headless runs (not ~100), and the deltas are attributable to the
+intervention alone. Ranked by throughput (trips), tiebroken by mean speed. Pure and unit-tested.
+
+**Driver (`SimulationCanvas`).** The sweep is chunked over `setTimeout` (`SWEEP_CHUNK` candidates per slice,
+`SWEEP_TICKS = 300` — a 1-minute screening) so it never blocks the UI and shows live `Testing n/N…`
+progress. It survives a throttled background tab (timeouts, unlike rAF, still fire).
+
+**Close the loop (`components/sim/Optimizer.tsx`).** A right-rail card below the A/B: run → a ranked
+**leaderboard** (top-6, winner highlighted, red/green Δ%). Each row is clickable — `stageCandidate` applies
+that fix to the *live* network and selects+spotlights its junction, so the user watches it and runs the full
+A/B to confirm the prediction. If the best delta is ≤0 (e.g. signals only hurt at low demand), it says so and
+suggests adding load. Staging a **priority flip** now also flips the A/B on — `scenarioChanged` gained a rank
+check (it compared closures/incidents/signals but not effective ranks), which also fixed the same gap for a
+manual inspector flip.
 
 ## 22. Trace a car's route (Etapa 14)
 

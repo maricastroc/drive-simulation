@@ -9,13 +9,13 @@ import type { LaneGeometry, Point } from './geometry';
 
 export interface JunctionApproach {
   readonly fromLane: number;
-  readonly conns: number[]; // connection ids, ordered [straight, turn] (flipPriority relies on this)
+  readonly conns: number[];
 }
 
 export interface Junction {
   readonly node: string;
   readonly pos: Point;
-  readonly approaches: JunctionApproach[]; // [H-in, V-in]
+  readonly approaches: JunctionApproach[];
 }
 
 export interface Grid {
@@ -34,9 +34,6 @@ interface Seg {
   readonly endNode: string;
 }
 
-// A one-way Manhattan grid: streets alternate direction by row/column. Each node over-declares
-// conflicts (every movement conflicts with every movement from the other incoming lane) for a
-// collision-free give-way; distinct ranks per node ⇒ no deadlock.
 export function buildGrid(rows: number, cols: number, block = 90, speedLimit = 16): Grid {
   const B = block;
   const segs: Seg[] = [];
@@ -137,7 +134,6 @@ export function buildGrid(rows: number, cols: number, block = 90, speedLimit = 1
 
   const graph = buildLaneGraph(laneSpecs, connSpecs);
 
-  // Resolve connection indices with straight before turn — flipPriority swaps them pairwise.
   const junctions: Junction[] = jdescs.map((j) => ({
     node: j.node,
     pos: j.pos,

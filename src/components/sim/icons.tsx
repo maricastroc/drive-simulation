@@ -62,3 +62,12 @@ export function IconBolt() {
     </svg>
   );
 }
+
+export function IconTarget() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent-2)" strokeWidth="1.3">
+      <circle cx="8" cy="8" r="5.6" />
+      <circle cx="8" cy="8" r="2.1" />
+    </svg>
+  );
+}

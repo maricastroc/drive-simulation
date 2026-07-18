@@ -1,7 +1,7 @@
 # Urban Flow — Progress
 
 Built incrementally in small, tested steps ("Etapas"). See `DESIGN.md` for the architecture.
-Status: **14 etapas done, 72 vitest tests passing, typecheck + lint clean.**
+Status: **15 etapas done, 76 vitest tests passing, typecheck + lint clean.**
 
 ## Done
 
@@ -21,6 +21,7 @@ Status: **14 etapas done, 72 vitest tests passing, typecheck + lint clean.**
 | 12 — Metrics time-series | A rolling **sparkline** on the two dynamic HUD vitals (§20): Flow /min (accent, auto-scaled) and km/h (green, scaled to free-flow) each carry a 60s live trace, newest pinned right. Pure geometry (`render/sparkline.ts`: ring buffer + SVG path strings) with an imperative shell (`components/sim/Sparkline.tsx`) fed once per sim-second from the RAF loop — no React re-render, consistent window at any speed. Cars/Trips stay counters. Presentation-only; +9 tests. |
 | 13 — Experiment presets | One-click **scenario presets** (§21): *Rush hour* (flood every entry), *Close the artery* (shut the central road → new traffic reroutes), *Signalize the centre* (lights on the middle junction). Each stages a **fresh same-seed network** — its demand + its one intervention — ready to watch live or run the A/B on. Deterministic central-junction pick from grid geometry (`render/presets.ts`, unit-tested & idempotent). Also gave the HUD header room to breathe now that the sparklines sit under the numerals. Presentation-only; +6 tests. |
 | 14 — Trace a car's route | Click a car → its **Dijkstra route** lights up across the grid (§22): remaining path in accent with dashes flowing to a pulsing destination marker, covered path faint, the rest of the network dimmed (reusing the spotlight), and an accent halo on the car. A **Vehicle inspector** shows destination, live speed, and route progress. Robust car identity across free-list slot reuse via an `enterTime` key. Pure route/progress helpers (`render/carTrace.ts`); presentation-only; +3 tests. |
+| 15 — Experiment optimizer | The determinism payoff at scale (§23): an **auto-optimizer** that sweeps every single-junction intervention (signalize / flip priority) as a controlled experiment against one shared baseline — same seed, same demand, headless — and ranks them by throughput. A chunked driver keeps the ~50-run search responsive with live progress; the **leaderboard** is clickable → stages the winning fix on the live network (junction selected + spotlit) so you confirm it with the full A/B. Turns the sandbox into a **decision engine**. Pure sweep (`render/optimize.ts`); also fixed `scenarioChanged` to count priority flips (so staged/optimizer flips enable the A/B). +4 tests. |
 
 ## Key decisions (rationale)
 
@@ -79,6 +80,11 @@ Status: **14 etapas done, 72 vitest tests passing, typecheck + lint clean.**
   selection to `(id, enterTime)` (the spawn stamp) fixes it: the trace clears the instant *its* car
   arrives, even if a new car lands in the same slot the next tick. The route itself is read straight from
   the agent's `routeBuffer` slice — no recompute, and the traversed/remaining split is just `routeIdx`.
+- **The optimizer is one shared baseline, not N A/Bs (Etapa 15)** — `runExperiment` recomputes its
+  baseline each call; the sweep computes the demand-only baseline **once** and measures every candidate
+  against it, so ~50 candidates cost ~51 headless runs, not ~100. It runs chunked over `setTimeout`
+  (2 candidates/slice) so a background tab still finishes and the UI shows live progress. Candidates are
+  demand-only + one intervention on a fresh same-seed world — the §19 controlled discipline, at scale.
 
 ## Quirks / gotchas
 
@@ -89,6 +95,12 @@ Status: **14 etapas done, 72 vitest tests passing, typecheck + lint clean.**
 - **Turbopack stale cache:** after editing many files, the browser console may show stale import
   errors (`pump`/`SPAWN_CLEARANCE` not found, etc.) even though the code is correct. Fix: kill the
   server, `rm -rf .next`, restart. **typecheck + vitest are the source of truth**, not the console.
+- **Comment-cleanup can eat code — always `npm test` after one.** A "remove non-essential comments"
+  pass has now corrupted logic three times by deleting the *code* line adjacent to a comment: the
+  `pushBack` `else` branch in `laneList.ts` (twice) and, in `grid.ts`, the 4th junction movement
+  (`vIn→hOut`) plus the `jdescs.push`. Symptoms: `conflictsWith references missing movement …` from
+  `buildLaneGraph`, or `expected -1 to be 1` in the laneList tests (broken `ahead`/`behind` wiring).
+  Both must stay — see the note in `laneList.ts`. Run the suite after any comment sweep.
 
 ## Commands
 

@@ -59,7 +59,7 @@ describe('control: closing a lane', () => {
   it('holds a car at the entrance of a closed lane and lets it through once reopened', () => {
     const w = createWorld(chain(), 16);
     const car = put(w, 0, 0, 0);
-    closeLane(w.control, 1); // shut the road ahead
+    closeLane(w.control, 1);
 
     run(w, 300);
     expect(w.agents.active[car]).toBe(1);

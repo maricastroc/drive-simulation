@@ -15,14 +15,14 @@ export function Metric({
 }) {
   const color = tone ? `var(--${tone})` : 'var(--text-1)';
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5">
+    <div className="rounded-lg border border-(--border) bg-(--surface-2) px-3 py-2.5">
       <div className="eyebrow mb-1.5">{label}</div>
       <div className="flex items-baseline gap-1">
         <span className="tnum text-[19px] font-semibold leading-none" style={{ color }}>{value}</span>
-        {unit && <span className="text-[11px] text-[var(--text-3)]">{unit}</span>}
+        {unit && <span className="text-[11px] text-(--text-3)">{unit}</span>}
       </div>
       {bar !== undefined && (
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--surface-3)]">
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-(--surface-3)">
           <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(4, bar * 100)}%`, background: color }} />
         </div>
       )}

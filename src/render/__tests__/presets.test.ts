@@ -27,7 +27,7 @@ describe('experiment presets', () => {
     const dChosen = (chosen.x - cx) ** 2 + (chosen.y - cy) ** 2;
     for (const j of js) {
       const d = (j.pos.x - cx) ** 2 + (j.pos.y - cy) ** 2;
-      expect(d).toBeGreaterThanOrEqual(dChosen - 1e-6); // nothing strictly more central
+      expect(d).toBeGreaterThanOrEqual(dChosen - 1e-6);
     }
   });
 

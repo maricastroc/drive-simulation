@@ -23,7 +23,7 @@ export function TopBar({
   freeKmh: number;
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-(--border) px-4 sm:h-[68px] md:px-5">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-(--border) px-4 sm:h-17 md:px-5">
       <div className="flex items-center gap-3">
         <BrandMark />
         <div className="leading-tight">
@@ -46,7 +46,7 @@ export function TopBar({
 
 function BrandMark() {
   return (
-    <div className="grid h-8 w-8 place-items-center rounded-lg border border-[var(--border-strong)] bg-[var(--surface-2)]">
+    <div className="grid h-8 w-8 place-items-center rounded-lg border border-(--border-strong) bg-(--surface-2)">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
         <path d="M2 5.5h12M2 10.5h12" stroke="var(--text-3)" strokeWidth="1.2" strokeLinecap="round" />
         <circle cx="5" cy="5.5" r="1.6" fill="var(--accent)" />
@@ -72,13 +72,12 @@ function HudStat({
   return (
     <div className={`flex flex-col items-end ${className}`}>
       <div className="flex items-center gap-1.5">
-        {live && <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[var(--good)]" />}
-        <span ref={valueRef} className="tnum text-[15px] font-semibold leading-none text-[var(--text-1)]">
+        {live && <span className="pulse-dot h-1.5 w-1.5 rounded-full bg-(--good)" />}
+        <span ref={valueRef} className="tnum text-[15px] font-semibold leading-none text-(--text-1)">
           0
         </span>
       </div>
-      {/* Fixed-height trace slot: present on every stat (empty for static ones) so
-          the value numerals and labels stay on one baseline across the HUD. */}
+==
       <div className="mt-1 hidden h-4 items-end sm:flex">{spark}</div>
       <span className="eyebrow mt-1">{label}</span>
     </div>
@@ -86,5 +85,5 @@ function HudStat({
 }
 
 function HudDivider({ className = '' }: { className?: string }) {
-  return <div className={`h-7 w-px bg-[var(--border)] ${className}`} />;
+  return <div className={`h-7 w-px bg-(--border) ${className}`} />;
 }

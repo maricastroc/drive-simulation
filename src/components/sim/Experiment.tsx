@@ -35,15 +35,15 @@ export function Experiment({
         <div className="eyebrow">Controlled experiment · A/B</div>
       </div>
 
-      <div className="mb-2 flex rounded-lg bg-[var(--surface-3)] p-0.5">
+      <div className="mb-2 flex rounded-lg bg-(--surface-3) p-0.5">
         {EXPERIMENT_DURATIONS.map((t) => (
           <button
             key={t}
             onClick={() => onDuration(t)}
             className={`tnum flex-1 rounded-md py-1 text-[11px] font-semibold transition-colors ${
               duration === t
-                ? 'bg-[var(--surface-1)] text-[var(--text-1)] ring-1 ring-[var(--border)]'
-                : 'text-[var(--text-3)] hover:text-[var(--text-2)]'
+                ? 'bg-(--surface-1) text-(--text-1) ring-1 ring-(--border)'
+                : 'text-(--text-3) hover:text-(--text-2)'
             }`}
           >
             {mins(t)}
@@ -55,16 +55,16 @@ export function Experiment({
         onClick={onRun}
         disabled={running || !hasIntervention}
         className={`w-full rounded-lg px-3 py-2 text-[13px] font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
-          running ? 'bg-[var(--surface-2)] text-[var(--text-2)]' : 'bg-[var(--accent)] text-white hover:brightness-110'
+          running ? 'bg-(--surface-2) text-(--text-2)' : 'bg-(--accent) text-white hover:brightness-110'
         } ${highlight ? 'hint-ring' : ''}`}
       >
         {running ? 'Running…' : result ? 'Run again' : 'Run experiment'}
       </button>
 
       {!hasIntervention && !result && (
-        <p className="mt-3 text-[12px] leading-relaxed text-[var(--text-3)]">
+        <p className="mt-3 text-[12px] leading-relaxed text-(--text-3)">
           Stage a change first — close a road, add a signal, or flip priority — then run it. Baseline
-          vs. your change, from the <strong className="text-[var(--text-2)]">same seed</strong> for the same {mins(duration)}.
+          vs. your change, from the <strong className="text-(--text-2)">same seed</strong> for the same {mins(duration)}.
         </p>
       )}
 
@@ -75,7 +75,7 @@ export function Experiment({
             {result.changes.map((c) => (
               <span
                 key={c}
-                className="tnum rounded-md bg-[var(--surface-3)] px-2 py-0.5 text-[10px] font-semibold text-[var(--text-2)]"
+                className="tnum rounded-md bg-(--surface-3) px-2 py-0.5 text-[10px] font-semibold text-(--text-2)"
               >
                 {c}
               </span>
@@ -90,7 +90,7 @@ export function Experiment({
               );
             })}
           </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-3)]">
+          <p className="mt-3 text-[11px] leading-relaxed text-(--text-3)">
             Both ran from the same seed for {mins(result.durationTicks)} — the delta is your change, not
             time or noise.
           </p>
@@ -121,17 +121,17 @@ function ImpactRow({
   return (
     <div className="py-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[12.5px] text-[var(--text-2)]">{label}</span>
+        <span className="text-[12.5px] text-(--text-2)">{label}</span>
         <div className="flex items-center gap-2">
-          <span className="tnum text-[12px] text-[var(--text-3)]">{a}</span>
+          <span className="tnum text-[12px] text-(--text-3)">{a}</span>
           <IconArrow />
-          <span className="tnum text-[12.5px] font-semibold text-[var(--text-1)]">{b}</span>
+          <span className="tnum text-[12.5px] font-semibold text-(--text-1)">{b}</span>
           <span className="tnum w-14 text-right text-[11px] font-semibold" style={{ color: tone }}>
             {improved === null ? '±0' : `${delta > 0 ? '+' : ''}${(rel * 100).toFixed(0)}%`}
           </span>
         </div>
       </div>
-      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--surface-3)]">
+      <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-(--surface-3)">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.abs(pct) * 100}%`, marginLeft: pct < 0 ? `${(1 - Math.abs(pct)) * 100}%` : 0, background: tone }} />
       </div>
     </div>

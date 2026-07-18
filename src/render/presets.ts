@@ -1,20 +1,14 @@
-// One-click experiment scenarios (§21). Each preset stages a fresh scene — a demand
-// level plus an optional intervention — so the user can watch it live and run the
-// controlled A/B on it. Deterministic: the central junction is derived from the
-// fixed-seed grid geometry, so the same preset always stages the same thing.
-
 import { toggleLaneClosed, toggleSignal, type Scene } from './scene';
 
 export interface Preset {
   readonly id: string;
   readonly label: string;
   readonly desc: string;
-  readonly tone: 'warn' | 'bad' | 'accent'; // leading dot colour (semantic)
-  readonly demandRate: number; // per-second, applied to every entry at scene build
-  readonly stage?: (scene: Scene) => void; // the intervention (staged on B); omit → demand-only
+  readonly tone: 'warn' | 'bad' | 'accent';
+  readonly demandRate: number;
+  readonly stage?: (scene: Scene) => void;
 }
 
-// The junction nearest the network's centre — its natural artery crossing.
 export function centralJunction(scene: Scene): number {
   const js = scene.junctions;
   let cx = 0;
@@ -37,7 +31,6 @@ export function centralJunction(scene: Scene): number {
   return best;
 }
 
-// The central junction's main incoming road (first approach backed by a real lane).
 function centralArteryLane(scene: Scene): number {
   const j = scene.junctions[centralJunction(scene)];
   const ap = j.approaches.find((a) => a.fromLane >= 0);

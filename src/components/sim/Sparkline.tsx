@@ -10,11 +10,8 @@ export interface SparkHandle {
 
 const W = 62;
 const H = 16;
-const CAP = 60; // ~60 samples ≈ a rolling 60s window at 1 sample/sim-second
+const CAP = 60;
 
-// A tiny live sparkline driven imperatively: the render loop calls `push` (~1 Hz)
-// and this writes straight to the SVG, so the trace never triggers a React render.
-// `max` fixes the top of the scale (e.g. free-flow speed); omit it to auto-scale.
 export const Sparkline = forwardRef<SparkHandle, { color: string; max?: number; className?: string }>(
   function Sparkline({ color, max, className }, ref) {
     const gid = 'spark-' + useId().replace(/:/g, '');

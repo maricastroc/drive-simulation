@@ -27,9 +27,9 @@ const GRID = 5;
 export interface SourceCtl {
   readonly lane: number;
   readonly src: SpawnSource;
-  readonly reachable: number[]; // sinks reachable in the open network
+  readonly reachable: number[];
   rate: number;
-  allowed: Set<number>; // enabled destinations, a subset of `reachable`
+  allowed: Set<number>;
 }
 
 export interface Scene {
@@ -68,7 +68,6 @@ export function createScene(rate: number): Scene {
   return scene;
 }
 
-// Routes append to the shared buffer (append-only), so in-flight cars keep their existing slices.
 export function applyRoutes(scene: Scene): void {
   const { world } = scene;
   const closed = world.control.laneClosed;
@@ -161,16 +160,16 @@ export function sampleStats(world: World): Stats {
   };
 }
 
-export const EXPERIMENT_DURATIONS = [300, 600, 1500]; // ticks: 1 / 2 / 5 sim-minutes
+export const EXPERIMENT_DURATIONS = [300, 600, 1500];
 
 export interface ExperimentResult {
-  readonly baseline: Stats; // clean network, same demand
-  readonly intervention: Stats; // demand + the staged changes
+  readonly baseline: Stats;
+  readonly intervention: Stats;
   readonly durationTicks: number;
-  readonly changes: string[]; // what B differs by
+  readonly changes: string[];
 }
 
-interface ScenarioConfig {
+export interface ScenarioConfig {
   rates: number[];
   allowed: Set<number>[];
   laneClosed: Uint8Array;
@@ -183,7 +182,7 @@ interface ScenarioConfig {
   priorityFlips: number;
 }
 
-function captureConfig(scene: Scene): ScenarioConfig {
+export function captureConfig(scene: Scene): ScenarioConfig {
   const c = scene.world.control;
   const conns = scene.world.graph.connections;
   let priorityFlips = 0;
@@ -206,9 +205,7 @@ function captureConfig(scene: Scene): ScenarioConfig {
   };
 }
 
-// Rebuild a config on a fresh scene. Demand is applied to both A and B; the staged interventions
-// (closures, incidents, priority, signals) only to B — so A and B differ by exactly the intervention.
-function applyConfig(scene: Scene, cfg: ScenarioConfig, withIntervention: boolean): void {
+export function applyConfig(scene: Scene, cfg: ScenarioConfig, withIntervention: boolean): void {
   scene.sources.forEach((s, i) => {
     setSourceRate(scene, s, cfg.rates[i]);
     s.allowed = new Set(cfg.allowed[i]);
@@ -224,9 +221,6 @@ function applyConfig(scene: Scene, cfg: ScenarioConfig, withIntervention: boolea
   applyRoutes(scene);
 }
 
-// A controlled A/B: run the baseline and the intervention on two freshly-seeded worlds (createScene
-// uses a fixed seed) for the SAME number of ticks — so the delta is the intervention's effect, not
-// elapsed time or noise. Pure and headless; no rendering.
 export function runExperiment(scene: Scene, durationTicks: number): ExperimentResult {
   const cfg = captureConfig(scene);
 

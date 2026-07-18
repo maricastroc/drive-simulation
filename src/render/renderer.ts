@@ -16,11 +16,11 @@ import {
 
 export interface RenderCar {
   readonly id: number;
-  readonly key: number; // enterTime — identity across slot reuse (unused by the renderer)
+  readonly key: number;
   readonly lane: number;
   readonly s: number;
   readonly length: number;
-  readonly speedFrac: number; // 0 = stopped, 1 = at desired speed
+  readonly speedFrac: number;
 }
 
 export interface RenderOverlay {
@@ -28,10 +28,10 @@ export interface RenderOverlay {
   readonly hoverLane: number;
   readonly selectedJunction: number;
   readonly hoverJunction: number;
-  readonly selectedCar: number; // agent id of the traced car, or -1
-  readonly carRoute: readonly number[]; // its full lane sequence (empty if none)
-  readonly carRouteIdx: number; // index in carRoute of the car's current lane
-  readonly now: number; // ms timestamp, drives all canvas motion
+  readonly selectedCar: number;
+  readonly carRoute: readonly number[];
+  readonly carRouteIdx: number;
+  readonly now: number;
 }
 
 const NO_OVERLAY: RenderOverlay = {
@@ -45,10 +45,9 @@ const NO_OVERLAY: RenderOverlay = {
   now: 0,
 };
 
-const ACCENT: RGB = [96, 165, 250]; // interaction / focus (matches --accent)
-const STOP_EPS = 0.14; // speedFrac below which a car counts as "queued"
+const ACCENT: RGB = [96, 165, 250];
+const STOP_EPS = 0.14;
 
-// Draw the mesh as a thermal flow-field (design doc §18).
 export function drawScene(
   ctx: CanvasRenderingContext2D,
   width: number,
@@ -72,9 +71,8 @@ export function drawScene(
     sumSF[c.lane] += clamp01(c.speedFrac);
     if (c.speedFrac < STOP_EPS) stopped[c.lane] += 1;
   }
-  const meanSF = (lane: number) => (load[lane] ? sumSF[lane] / load[lane] : 1); // empty lane = free-flowing
+  const meanSF = (lane: number) => (load[lane] ? sumSF[lane] / load[lane] : 1);
 
-  // Focus set: the selection and its immediate network context (spotlight, rest dims).
   const hasSel = overlay.selectedLane >= 0 || overlay.selectedJunction >= 0 || overlay.carRoute.length > 0;
   const focus = new Set<number>();
   if (overlay.selectedLane >= 0) focus.add(overlay.selectedLane);
@@ -84,7 +82,7 @@ export function drawScene(
       for (const cId of ap.conns) focus.add(graph.connections[cId].toLane);
     }
   }
-  for (const lane of overlay.carRoute) focus.add(lane); // the traced route stays lit
+  for (const lane of overlay.carRoute) focus.add(lane);
   const dimOf = (lane: number) => (hasSel && !focus.has(lane) ? 0.28 : 1);
 
   const A: Pt[] = new Array(n);
@@ -187,7 +185,7 @@ export function drawScene(
 }
 
 function drawBackdrop(ctx: CanvasRenderingContext2D, w: number, h: number, now: number): void {
-  const breathe = 0.5 + 0.5 * Math.sin(now / 3200); // slow, subtle
+  const breathe = 0.5 + 0.5 * Math.sin(now / 3200);
   const g = ctx.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, Math.max(w, h) * 0.72);
   g.addColorStop(0, rgba([16, 21, 30], 1));
   g.addColorStop(0.55, rgba([10, 13, 19], 1));
@@ -279,7 +277,6 @@ function drawCar(
   ctx.globalAlpha = dim;
   ctx.shadowBlur = 0;
 
-  // Micro-trail behind the body — a motion cue.
   if (sf > 0.1) {
     const trail = 4 + 14 * sf;
     const g = ctx.createLinearGradient(-L / 2 - trail, 0, -L / 2, 0);
@@ -295,7 +292,6 @@ function drawCar(
     ctx.fill();
   }
 
-  // Bright capsule carved from the road glow by a dark shadow + edge; near-white nose = heading.
   roundedRect(ctx, -L / 2, -W / 2, L, W, Math.min(W * 0.5, 3));
   ctx.shadowColor = 'rgba(2,4,8,0.9)';
   ctx.shadowBlur = 5;
@@ -402,8 +398,6 @@ function drawJunction(
   }
 }
 
-// The selected car's Dijkstra route: covered lanes faint, remaining lanes bright
-// with dashes flowing toward a pulsing destination marker.
 function drawRoute(ctx: CanvasRenderingContext2D, A: Pt[], B: Pt[], lanes: readonly number[], idx: number, now: number): void {
   ctx.lineCap = 'round';
   for (let k = 0; k < lanes.length; k++) {
@@ -414,7 +408,7 @@ function drawRoute(ctx: CanvasRenderingContext2D, A: Pt[], B: Pt[], lanes: reado
 
   ctx.save();
   ctx.setLineDash([5, 7]);
-  ctx.lineDashOffset = -((now / 45) % 12); // flows a→b, the travel direction
+  ctx.lineDashOffset = -((now / 45) % 12);
   ctx.strokeStyle = rgba([214, 230, 255], 0.9);
   ctx.lineWidth = 1.3;
   for (let k = Math.max(0, idx); k < lanes.length; k++) {

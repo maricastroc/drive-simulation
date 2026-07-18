@@ -72,7 +72,7 @@ function CarInspector({
         <Metric label="Progress" value={cs ? String(Math.round(cs.progress * 100)) : '—'} unit="%" tone="good" bar={cs ? cs.progress : 0} />
       </div>
 
-      <p className="text-[11.5px] leading-snug text-[var(--text-3)]">
+      <p className="text-[11.5px] leading-snug text-(--text-3)">
         {cs
           ? `${cs.hopsLeft} ${cs.hopsLeft === 1 ? 'road' : 'roads'} to its destination — its shortest path (Dijkstra) is traced on the map.`
           : 'Tracing its route…'}
@@ -91,7 +91,7 @@ function InspectorEmpty() {
   return (
     <section className={`${CARD} anim-fade p-4`}>
       <div className="eyebrow mb-3">Inspector</div>
-      <p className="mb-4 text-[13px] leading-relaxed text-[var(--text-2)]">
+      <p className="mb-4 text-[13px] leading-relaxed text-(--text-2)">
         Click anything on the map to inspect it and run an experiment. Nothing is hidden in menus.
       </p>
       <div className="flex flex-col gap-3">
@@ -99,13 +99,13 @@ function InspectorEmpty() {
           <div key={r.t} className="flex items-start gap-3">
             <LegendGlyph color={r.c} shape={r.shape} />
             <div>
-              <div className="text-[12.5px] font-medium text-[var(--text-1)]">{r.t}</div>
-              <div className="text-[12px] leading-snug text-[var(--text-3)]">{r.d}</div>
+              <div className="text-[12.5px] font-medium text-(--text-1)">{r.t}</div>
+              <div className="text-[12px] leading-snug text-(--text-3)">{r.d}</div>
             </div>
           </div>
         ))}
       </div>
-      <div className="mt-4 border-t border-[var(--border)] pt-3 text-[11px] leading-relaxed text-[var(--text-3)]">
+      <div className="mt-4 border-t border-(--border) pt-3 text-[11px] leading-relaxed text-(--text-3)">
         Speed reads as heat — <span style={{ color: 'rgb(235,110,102)' }}>jammed</span> to{' '}
         <span style={{ color: 'rgb(126,196,220)' }}>free-flow</span>. Roads, junctions and flow pulses
         warm and slow where the network is under load.
@@ -124,7 +124,7 @@ function InspectorHeader({ kind, title, onClear }: { kind: string; title: string
       <button
         onClick={onClear}
         aria-label="Close"
-        className="grid h-7 w-7 place-items-center rounded-lg text-[var(--text-3)] transition-colors hover:bg-[var(--surface-3)] hover:text-[var(--text-1)]"
+        className="grid h-7 w-7 place-items-center rounded-lg text-(--text-3) transition-colors hover:bg-(--surface-3) hover:text-(--text-1)"
       >
         <IconClose />
       </button>
@@ -198,10 +198,10 @@ function EntryControls({
   sinkLabelOf: (sink: number) => string;
 }) {
   return (
-    <div className="mt-4 border-t border-[var(--border)] pt-4">
+    <div className="mt-4 border-t border-(--border) pt-4">
       <div className="mb-2 flex items-center justify-between">
         <span className="eyebrow">Demand</span>
-        <span className="tnum text-[12px] text-[var(--text-2)]">{ctl.rate.toFixed(1)}/s</span>
+        <span className="tnum text-[12px] text-(--text-2)">{ctl.rate.toFixed(1)}/s</span>
       </div>
       <input
         type="range"
@@ -215,7 +215,7 @@ function EntryControls({
 
       <div className="mt-4 mb-2 flex items-center justify-between">
         <span className="eyebrow">Destinations</span>
-        <span className="tnum text-[11px] text-[var(--text-3)]">{ctl.allowed.size}/{ctl.reachable.length}</span>
+        <span className="tnum text-[11px] text-(--text-3)">{ctl.allowed.size}/{ctl.reachable.length}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {ctl.reachable.map((sink) => {
@@ -226,8 +226,8 @@ function EntryControls({
               onClick={() => { toggleDestination(scene, ctl, sink); bump(); }}
               className={`tnum rounded-md px-2.5 py-1 text-[11px] font-semibold transition-all duration-150 ${
                 on
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent-2)] ring-1 ring-[var(--accent)]/40'
-                  : 'bg-[var(--surface-3)] text-[var(--text-3)] hover:text-[var(--text-2)]'
+                  ? 'bg-(--accent-soft) text-(--accent-2) ring-1 ring-(--accent)/40'
+                  : 'bg-(--surface-3) text-(--text-3) hover:text-(--text-2)'
               }`}
             >
               {sinkLabelOf(sink)}
@@ -236,7 +236,7 @@ function EntryControls({
         })}
       </div>
       {ctl.allowed.size === 0 && (
-        <p className="mt-2 text-[11px] text-[var(--bad)]">No destinations — this entry is paused.</p>
+        <p className="mt-2 text-[11px] text-(--bad)">No destinations — this entry is paused.</p>
       )}
     </div>
   );
@@ -279,7 +279,7 @@ function JunctionInspector({
           Flip priority
         </ActionButton>
       </div>
-      <p className="mt-3 text-[11.5px] leading-snug text-[var(--text-3)]">
+      <p className="mt-3 text-[11.5px] leading-snug text-(--text-3)">
         {signalized
           ? 'Approaches alternate green on a fixed cycle.'
           : 'Give-way: the major street crosses first. Flip to swap right of way.'}

@@ -34,7 +34,7 @@ describe('sparkGeometry', () => {
 
   it('maps min→baseline and max→top on a fixed scale', () => {
     const g = sparkGeometry([0, 10], { ...base, min: 0, max: 10, pad: 0 });
-    expect(g.head.y).toBeCloseTo(0); // newest value 10 → top
+    expect(g.head.y).toBeCloseTo(0);
   });
 
   it('clamps values above max to the top (never above)', () => {
@@ -49,13 +49,13 @@ describe('sparkGeometry', () => {
 
   it('auto-scales to the rolling max when max is omitted', () => {
     const g = sparkGeometry([1, 2, 4], { ...base, pad: 0, floor: 1 });
-    expect(g.head.y).toBeCloseTo(0); // max = 4, newest = 4 → top
+    expect(g.head.y).toBeCloseTo(0);
   });
 
   it('closes the area path back to the baseline', () => {
     const g = sparkGeometry([5, 8], { ...base, min: 0, max: 10, pad: 0 });
     expect(g.area.startsWith('M')).toBe(true);
     expect(g.area.endsWith('Z')).toBe(true);
-    expect(g.area).toContain(',20'); // touches the baseline (height - pad)
+    expect(g.area).toContain(',20');
   });
 });

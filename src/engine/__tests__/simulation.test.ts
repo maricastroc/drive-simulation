@@ -18,7 +18,6 @@ describe('LaneGraph builder', () => {
     expect(g.length[0]).toBe(100);
     expect(g.speedLimit[1]).toBeCloseTo(13.9);
 
-    // Lane 0 has exactly one outgoing connection; lane 1 has none.
     expect(g.connEnd[0] - g.connStart[0]).toBe(1);
     expect(g.connEnd[1] - g.connStart[1]).toBe(0);
 

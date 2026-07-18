@@ -28,7 +28,7 @@ export function createControl(graph: LaneGraph): ScenarioControl {
     laneClosed: new Uint8Array(graph.laneCount),
     incidentAt: new Float32Array(graph.laneCount).fill(Infinity),
     rank,
-    signal: new Uint8Array(nConn), // SIGNAL_NONE everywhere
+    signal: new Uint8Array(nConn),
     signals: [],
   };
 }

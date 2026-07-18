@@ -14,17 +14,17 @@ export function Presets({ onApply }: { onApply: (preset: Preset) => void }) {
           <button
             key={p.id}
             onClick={() => onApply(p)}
-            className="flex items-start gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2.5 text-left transition-all duration-150 hover:border-[var(--border-strong)] hover:bg-[var(--surface-3)]"
+            className="flex items-start gap-2.5 rounded-lg border border-(--border) bg-(--surface-2) px-3 py-2.5 text-left transition-all duration-150 hover:border-(--border-strong) hover:bg-(--surface-3)"
           >
-            <span className="mt-[5px] h-2 w-2 shrink-0 rounded-full" style={{ background: `var(--${p.tone})` }} />
+            <span className="mt-1.25 h-2 w-2 shrink-0 rounded-full" style={{ background: `var(--${p.tone})` }} />
             <div className="min-w-0">
-              <div className="text-[12.5px] font-semibold text-[var(--text-1)]">{p.label}</div>
-              <div className="text-[11px] leading-snug text-[var(--text-3)]">{p.desc}</div>
+              <div className="text-[12.5px] font-semibold text-(--text-1)">{p.label}</div>
+              <div className="text-[11px] leading-snug text-(--text-3)">{p.desc}</div>
             </div>
           </button>
         ))}
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-3)]">
+      <p className="mt-3 text-[11px] leading-relaxed text-(--text-3)">
         One click stages a fresh network — then watch it, or run the A/B.
       </p>
     </section>

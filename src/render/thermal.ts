@@ -11,7 +11,6 @@ const STOPS: readonly (readonly [number, RGB])[] = [
   [1.0, THERMAL_FREE],
 ];
 
-// Map t∈[0,1] (0 = jammed → hot, 1 = free → cool) to an RGB.
 export function thermal(t: number): RGB {
   const x = clamp01(t);
   for (let i = 1; i < STOPS.length; i++) {
@@ -24,7 +23,6 @@ export function thermal(t: number): RGB {
   return STOPS[STOPS.length - 1][1];
 }
 
-// Dark asphalt warmed by congestion — heat carried by hue, so it needs no bloom.
 export function asphalt(cong: number): string {
   return rgba(mix([24, 29, 37], [82, 45, 41], clamp01(cong)), 1);
 }

@@ -70,7 +70,6 @@ describe('integration on a single lane', () => {
     let minGap = Infinity;
     for (let n = 0; n < 800; n++) {
       tick(world);
-      // Pin the leader so it stays a stopped obstacle at leaderPos.
       world.agents.s[leader] = leaderPos;
       world.agents.v[leader] = 0;
       const gap = leaderPos - world.agents.s[follower] - P.length;

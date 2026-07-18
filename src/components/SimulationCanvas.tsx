@@ -5,6 +5,7 @@ import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
 import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventions, scenarioSignature, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
+import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@/render/shareLink';
 import { type Preset } from '@/render/presets';
 import { generateCandidates, sweepBaseline, sweepCandidate, type SweepRow, type Candidate } from '@/render/optimize';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
@@ -46,10 +47,28 @@ const EMPTY_ROUTE: number[] = [];
 const SWEEP_TICKS = 300;
 const SWEEP_CHUNK = 2;
 
-export function SimulationCanvas() {
+/** Build the opening scene — the default grid, or a shared scenario from the URL. */
+function buildInitialScene(scenarioParam: string | null | undefined): Scene {
+  const scene = createScene(unitsToRate(DEFAULT_DEMAND));
+  const parsed = scenarioParam ? decodeScenario(scenarioParam) : null;
+  if (parsed) applyScenario(scene, parsed);
+  return scene;
+}
+
+/** Demand-slider units (0–20) that represent a scene's inflow (its peak entry rate). */
+function demandUnitsOf(scene: Scene): number {
+  return Math.round(Math.max(0, ...scene.sources.map((s) => s.rate)) * 10);
+}
+
+export function SimulationCanvas({ scenarioParam = null }: { scenarioParam?: string | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [scene, setSceneState] = useState<Scene>(() => createScene(unitsToRate(DEFAULT_DEMAND)));
+  // Decode the shared scenario (if any) during render, so the server-rendered HTML
+  // and the first client render agree — no hydration flash, no setState-in-effect.
+  const initialScene = useRef<Scene | null>(null);
+  if (initialScene.current === null) initialScene.current = buildInitialScene(scenarioParam);
+
+  const [scene, setSceneState] = useState<Scene>(initialScene.current);
   const sceneRef = useRef<Scene>(scene);
   const cap0 = scene.world.agents.capacity;
   const prevSRef = useRef<Float32Array>(new Float32Array(cap0));
@@ -84,7 +103,7 @@ export function SimulationCanvas() {
 
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [demand, setDemand] = useState(DEFAULT_DEMAND);
+  const [demand, setDemand] = useState(() => demandUnitsOf(initialScene.current!));
   const [sel, setSel] = useState<Selection>(NONE_SEL);
   const [selStats, setSelStats] = useState<SelStats | null>(null);
   const [, forceRender] = useState(0);
@@ -96,11 +115,20 @@ export function SimulationCanvas() {
   const [sweepRunning, setSweepRunning] = useState(false);
   const [sweepProg, setSweepProg] = useState({ done: 0, total: 0 });
   const [sweepResult, setSweepResult] = useState<{ baseline: Stats; rows: SweepRow[]; sig: string } | null>(null);
+  const [shared, setShared] = useState(false);
+  // The global demand slider sets every entry to one rate, so its mount run would
+  // flatten a shared link's per-entry rates. Skip it — the initial scene already
+  // carries the right rates — and let only later user drags through.
+  const demandSkip = useRef(true);
 
   useEffect(() => void (playingRef.current = playing), [playing]);
   useEffect(() => void (speedRef.current = speed), [speed]);
   useEffect(() => void (selRef.current = sel), [sel]);
   useEffect(() => {
+    if (demandSkip.current) {
+      demandSkip.current = false;
+      return;
+    }
     setDemandRate(sceneRef.current, unitsToRate(demand));
   }, [demand]);
 
@@ -140,13 +168,20 @@ export function SimulationCanvas() {
     return () => window.clearInterval(id);
   }, [sel]);
 
+  // Drop a shared "?s=…" from the address bar once the on-screen scene no longer
+  // matches it (reset / preset), so a reload can't resurrect a stale scenario.
+  const clearShareUrl = useCallback(() => {
+    if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
+  }, []);
+
   const reset = useCallback(() => {
     setSceneState(createScene(unitsToRate(demand)));
     setSel(NONE_SEL);
     setSelStats(null);
     setExpResult(null);
     setSweepResult(null);
-  }, [demand]);
+    clearShareUrl();
+  }, [demand, clearShareUrl]);
 
   const applyPreset = useCallback((preset: Preset) => {
     const staged = createScene(preset.demandRate);
@@ -157,6 +192,15 @@ export function SimulationCanvas() {
     setSelStats(null);
     setExpResult(null);
     setSweepResult(null);
+    clearShareUrl();
+  }, [clearShareUrl]);
+
+  const share = useCallback(() => {
+    const url = `${window.location.origin}${window.location.pathname}?${SCENARIO_PARAM}=${encodeScenario(sceneRef.current)}`;
+    window.history.replaceState(null, '', url);
+    void navigator.clipboard?.writeText(url).catch(() => {});
+    setShared(true);
+    window.setTimeout(() => setShared(false), 1800);
   }, []);
 
   const runExp = useCallback(() => {
@@ -458,6 +502,8 @@ export function SimulationCanvas() {
             onDemand={setDemand}
             onReset={reset}
             onFastForward={fastForward}
+            onShare={share}
+            shared={shared}
             clockRef={hudClock}
           />
 

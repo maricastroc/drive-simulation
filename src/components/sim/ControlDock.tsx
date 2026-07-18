@@ -1,5 +1,5 @@
 import { unitsToRate } from './types';
-import { IconPause, IconPlay, IconReset, IconFastForward } from './icons';
+import { IconPause, IconPlay, IconReset, IconFastForward, IconLink, IconCheck } from './icons';
 
 export function ControlDock({
   playing,
@@ -10,6 +10,8 @@ export function ControlDock({
   onDemand,
   onReset,
   onFastForward,
+  onShare,
+  shared,
   clockRef,
 }: {
   playing: boolean;
@@ -20,6 +22,8 @@ export function ControlDock({
   onDemand: (d: number) => void;
   onReset: () => void;
   onFastForward: () => void;
+  onShare: () => void;
+  shared: boolean;
   clockRef: React.RefObject<HTMLSpanElement | null>;
 }) {
   const speeds = [1, 2, 4];
@@ -93,6 +97,16 @@ export function ControlDock({
           className="grid h-9 w-9 place-items-center rounded-xl text-(--text-2) transition-colors hover:bg-(--surface-3) hover:text-(--text-1)"
         >
           <IconFastForward />
+        </button>
+        <button
+          onClick={onShare}
+          aria-label="Copy shareable link"
+          title={shared ? 'Link copied' : 'Copy a link to this scenario'}
+          className={`grid h-9 w-9 place-items-center rounded-xl transition-colors ${
+            shared ? 'text-(--good)' : 'text-(--text-2) hover:bg-(--surface-3) hover:text-(--text-1)'
+          }`}
+        >
+          {shared ? <IconCheck /> : <IconLink />}
         </button>
         <button
           onClick={onReset}

@@ -31,6 +31,23 @@ export function IconReset() {
   );
 }
 
+export function IconLink() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.6 9.4a2.5 2.5 0 0 0 3.66.16l2-2a2.5 2.5 0 1 0-3.54-3.54l-1 1" />
+      <path d="M9.4 6.6a2.5 2.5 0 0 0-3.66-.16l-2 2a2.5 2.5 0 1 0 3.54 3.54l1-1" />
+    </svg>
+  );
+}
+
+export function IconCheck() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 8.4l3 3 6-6.8" />
+    </svg>
+  );
+}
+
 export function IconClose() {
   return (
     <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">

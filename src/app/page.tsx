@@ -1,9 +1,17 @@
 import { SimulationCanvas } from '@/components/SimulationCanvas';
+import { SCENARIO_PARAM } from '@/render/shareLink';
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const raw = (await searchParams)[SCENARIO_PARAM];
+  const scenarioParam = typeof raw === 'string' ? raw : null;
+
   return (
     <main className="h-dvh">
-      <SimulationCanvas />
+      <SimulationCanvas scenarioParam={scenarioParam} />
     </main>
   );
 }

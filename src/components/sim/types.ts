@@ -83,6 +83,6 @@ export function scenarioChanged(scene: Scene): boolean {
   for (let i = 0; i < c.laneClosed.length; i++) if (c.laneClosed[i] === 1) return true;
   for (let i = 0; i < c.incidentAt.length; i++) if (c.incidentAt[i] < Infinity) return true;
   if (c.signals.some((s) => s.enabled)) return true;
-  for (let i = 0; i < c.rank.length; i++) if (c.rank[i] !== conns[i].rank) return true; // priority flipped
+  for (let i = 0; i < c.rank.length; i++) if (c.rank[i] !== conns[i].rank) return true;
   return false;
 }

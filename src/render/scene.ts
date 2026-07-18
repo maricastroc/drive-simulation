@@ -133,6 +133,16 @@ export function toggleSignal(scene: Scene, j: number, seconds = DEFAULT_SIGNAL_S
   return true;
 }
 
+export function clearInterventions(scene: Scene): void {
+  const c = scene.world.control;
+  const conns = scene.world.graph.connections;
+  c.laneClosed.fill(0);
+  c.incidentAt.fill(Infinity);
+  for (let i = 0; i < c.rank.length; i++) c.rank[i] = conns[i].rank;
+  for (const s of scene.signals) if (s && s.enabled) disableSignal(c, s);
+  applyRoutes(scene);
+}
+
 export interface Stats {
   cars: number;
   avgSpeedKmh: number;

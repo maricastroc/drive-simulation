@@ -124,10 +124,10 @@ export function buildGrid(rows: number, cols: number, block = 90, speedLimit = 1
         [hIn, hOut],
         [hIn, vOut],
       ];
-      connSpecs.push({ fromLane: hIn, toLane: hOut, rank: 4, conflictsWith: hConflicts }); // straight
-      connSpecs.push({ fromLane: hIn, toLane: vOut, rank: 3, conflictsWith: hConflicts }); // turn
-      connSpecs.push({ fromLane: vIn, toLane: vOut, rank: 2, conflictsWith: vConflicts }); // straight
-      connSpecs.push({ fromLane: vIn, toLane: hOut, rank: 1, conflictsWith: vConflicts }); // turn
+      connSpecs.push({ fromLane: hIn, toLane: hOut, rank: 4, conflictsWith: hConflicts });
+      connSpecs.push({ fromLane: hIn, toLane: vOut, rank: 3, conflictsWith: hConflicts });
+      connSpecs.push({ fromLane: vIn, toLane: vOut, rank: 2, conflictsWith: vConflicts });
+      connSpecs.push({ fromLane: vIn, toLane: hOut, rank: 1, conflictsWith: vConflicts });
       jdescs.push({ node, pos: { x: c * B, y: r * B }, hIn, hOut, vIn, vOut });
     }
   }

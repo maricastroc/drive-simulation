@@ -263,7 +263,6 @@ function JunctionInspector({
   const signalized = scene.signals[j]?.enabled === true;
   const js = stats?.kind === 'junction' ? stats : null;
 
-  // Transient textual confirmation after an intervention (clears itself after 2s).
   const [note, setNote] = useState<{ text: string; id: number } | null>(null);
   const noteId = useRef(0);
   useEffect(() => {

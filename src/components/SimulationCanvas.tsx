@@ -4,7 +4,7 @@ import 'react-tooltip/dist/react-tooltip.css';
 import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
-import { createScene, setDemandRate, sampleStats, runExperiment, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
+import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventions, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
 import { type Preset } from '@/render/presets';
 import { generateCandidates, sweepBaseline, sweepCandidate, type SweepRow, type Candidate } from '@/render/optimize';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
@@ -166,6 +166,12 @@ export function SimulationCanvas() {
       setExpRunning(false);
     }, 30);
   }, [expDuration]);
+
+  const clearStaged = useCallback(() => {
+    clearInterventions(sceneRef.current);
+    setExpResult(null);
+    bump();
+  }, [bump]);
 
   const runSweep = useCallback(() => {
     const scene = sceneRef.current;
@@ -425,7 +431,7 @@ export function SimulationCanvas() {
             onClick={onCanvasClick}
             onMouseMove={onCanvasMove}
             onMouseLeave={onCanvasLeave}
-            className="absolute inset-0 h-full w-full"
+            className="absolute inset-0 h-full w-full cursor-pointer"
           />
 
           <ControlDock
@@ -453,6 +459,7 @@ export function SimulationCanvas() {
             duration={expDuration}
             onDuration={setExpDuration}
             onRun={runExp}
+            onClearStaged={clearStaged}
             hasIntervention={changed}
             highlight={!coachDismissed && coachStep === 1}
           />

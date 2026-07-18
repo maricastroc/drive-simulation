@@ -25,7 +25,6 @@ export function Optimizer({
   const best = result?.rows[0];
   const helps = !!best && best.tripsDelta > 0.005;
 
-  // Transient textual confirmation after staging a fix (clears itself after 2s).
   const [staged, setStaged] = useState<{ kind: Candidate['kind']; id: number } | null>(null);
   const stageId = useRef(0);
   useEffect(() => {
@@ -73,7 +72,7 @@ export function Optimizer({
       {result && (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <span className="eyebrow">Ranked vs baseline</span>
+            <span className="eyebrow">Best interventions</span>
             <button onClick={onRun} disabled={running} className="eyebrow text-(--accent-2) transition-colors hover:text-(--accent) disabled:opacity-40">
               {running ? `${done}/${total}` : 'Rerun'}
             </button>

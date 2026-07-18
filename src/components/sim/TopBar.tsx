@@ -33,15 +33,8 @@ export function TopBar({
 }
 
 function BrandMark() {
-  return (
-    <div className="grid h-8 w-8 place-items-center rounded-lg border border-(--border-strong) bg-(--surface-2)">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 5.5h12M2 10.5h12" stroke="var(--text-3)" strokeWidth="1.2" strokeLinecap="round" />
-        <circle cx="5" cy="5.5" r="1.6" fill="var(--accent)" />
-        <circle cx="10.5" cy="10.5" r="1.6" fill="var(--good)" />
-      </svg>
-    </div>
-  );
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/app-icon.svg" alt="Urban Flow" className="h-8 w-8" />;
 }
 
 function HudStat({

@@ -1,29 +1,17 @@
 @import "tailwindcss";
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Urban Flow — design system (Etapa 9)
-   A restrained "mission-control" dark theme: one accent, semantic status,
-   mono numerals, hairline surfaces. Tokens live here; the canvas mirrors the
-   same hex in renderer.ts.
-   ───────────────────────────────────────────────────────────────────────── */
-
 :root {
-  /* Base + surfaces */
   --bg: #07080a;
-  --surface-1: #0c0e12; /* rails */
-  --surface-2: #121620; /* elevated panels, controls */
-  --surface-3: #1a1f2b; /* hover */
+  --surface-1: #0c0e12;
+  --surface-2: #121620;
+  --surface-3: #1a1f2b;
   --border: rgba(255, 255, 255, 0.07);
   --border-strong: rgba(255, 255, 255, 0.13);
 
-  /* Text */
   --text-1: #eef1f6;
   --text-2: #9ba3b0;
   --text-3: #626a77;
 
-  /* Accent (interaction / selection) + status.
-     UI-chrome blue, ~12% less saturated than the vivid canvas accent so solid
-     CTAs read as calm, not shouting; same hue + lightness keeps the contrast. */
   --accent: #5c92eb;
   --accent-2: #75a8f5;
   --accent-soft: rgba(92, 146, 235, 0.14);
@@ -52,11 +40,15 @@ body {
   background: var(--bg);
   color: var(--text-1);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  overflow: hidden; /* the app is a full-viewport shell; panels scroll internally */
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Numerals everywhere read as instrument readouts. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 .tnum {
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
@@ -71,7 +63,6 @@ body {
   color: var(--text-3);
 }
 
-/* ── Motion ─────────────────────────────────────────────────────────────── */
 @keyframes uf-fade-up {
   from {
     opacity: 0;
@@ -138,7 +129,6 @@ body {
   }
 }
 
-/* ── Instrument slider ──────────────────────────────────────────────────── */
 .range-instr {
   -webkit-appearance: none;
   appearance: none;
@@ -178,7 +168,6 @@ body {
   box-shadow: 0 0 0 3px rgba(79, 143, 247, 0.18);
 }
 
-/* ── Scrollbar (rails) ──────────────────────────────────────────────────── */
 .thin-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
@@ -197,22 +186,17 @@ body {
   background-clip: padding-box;
 }
 
-/* ── Tooltip (react-tooltip, themed to match cards) ─────────────────────────
-   Two-class specificity (0,2,0) beats react-tooltip's injected single-class
-   rules regardless of load order. Colours are driven through its own tokens
-   (--rt-color-dark = surface, --rt-color-white = text) so the arrow (which
-   inherits the background) follows automatically. */
 .react-tooltip.uf-tooltip {
   --rt-color-dark: var(--surface-2);
   --rt-color-white: var(--text-1);
   --rt-opacity: 1;
-  padding: 6px 9px;
+  padding: 5px 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 12.5px;
+  line-height: 1.3;
   font-weight: 500;
-  max-width: 220px;
+  max-width: 240px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   z-index: 60;
 }

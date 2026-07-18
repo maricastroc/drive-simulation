@@ -3,13 +3,31 @@ import { EXPERIMENT_DURATIONS } from '@/render/scene';
 import { CARD } from './ui';
 import { IconArrow, IconFlask } from './icons';
 
-const METRICS: { label: string; get: (s: Stats) => number; fmt: (n: number) => string; better: 'up' | 'down' }[] = [
-  { label: 'Trips completed', get: (s) => s.completedTrips, fmt: (n) => String(Math.round(n)), better: 'up' },
+const SECONDARY: { label: string; get: (s: Stats) => number; fmt: (n: number) => string; better: 'up' | 'down' }[] = [
   { label: 'Avg speed', get: (s) => s.avgSpeedKmh, fmt: (n) => `${Math.round(n)} km/h`, better: 'up' },
   { label: 'Avg trip time', get: (s) => s.avgTravelTime, fmt: (n) => (n ? `${Math.round(n)} s` : '—'), better: 'down' },
 ];
 
 const mins = (ticks: number) => `${Math.round(ticks / 300)} min`;
+const rel = (a: number, b: number) => (a ? (b - a) / Math.abs(a) : 0);
+
+function summarize(result: ExperimentResult) {
+  const tripsA = result.baseline.completedTrips;
+  const tripsB = result.intervention.completedTrips;
+  const tripsRel = rel(tripsA, tripsB);
+  const speedRel = rel(result.baseline.avgSpeedKmh, result.intervention.avgSpeedKmh);
+  const up = tripsRel > 0.005;
+  const down = tripsRel < -0.005;
+  const verdict = up
+    ? { mark: '✓', label: 'Improvement', tone: 'var(--good)' }
+    : down
+      ? { mark: '✗', label: 'Regression', tone: 'var(--bad)' }
+      : { mark: '≈', label: 'No change', tone: 'var(--text-3)' };
+
+  const tradeoff = up && speedRel < -0.01;
+  const pct = `${tripsRel > 0.005 ? '+' : ''}${Math.round(tripsRel * 100)}%`;
+  return { tripsA, tripsB, verdict, tradeoff, pct };
+}
 
 export function Experiment({
   result,
@@ -17,6 +35,7 @@ export function Experiment({
   duration,
   onDuration,
   onRun,
+  onClearStaged,
   hasIntervention,
   highlight,
 }: {
@@ -25,6 +44,7 @@ export function Experiment({
   duration: number;
   onDuration: (ticks: number) => void;
   onRun: () => void;
+  onClearStaged: () => void;
   hasIntervention: boolean;
   highlight: boolean;
 }) {
@@ -62,41 +82,80 @@ export function Experiment({
         {running ? 'Running…' : result ? 'Run again' : 'Run experiment'}
       </button>
 
+      {hasIntervention && (
+        <button
+          onClick={onClearStaged}
+          title="Revert every staged change back to the untouched network"
+          className="mt-2 w-full text-[11.5px] font-medium text-(--text-3) transition-colors hover:text-(--text-1)"
+        >
+          Clear staged changes
+        </button>
+      )}
+
       {!hasIntervention && !result && (
         <p className="mt-3 text-[12px] leading-relaxed text-(--text-3)">
-          Stage a change first — close a road, add a signal, or flip priority — then run it. Baseline
-          vs. your change, from the <strong className="text-(--text-2)">same seed</strong> for the same {mins(duration)}.
+          Stage a change — close a road, add a signal, or flip priority — then run it. The A/B pits the
+          <strong className="text-(--text-2)"> untouched network</strong> against
+          <strong className="text-(--text-2)"> everything you&apos;ve staged</strong>, from the same seed
+          for the same {mins(duration)}. Changes stack — use <em>Clear staged</em> to test one at a time.
         </p>
       )}
 
-      {result && (
-        <div className="mt-3">
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
-            <span className="eyebrow">Baseline → change</span>
-            {result.changes.map((c) => (
-              <span
-                key={c}
-                className="tnum rounded-md bg-(--surface-3) px-2 py-0.5 text-[10px] font-semibold text-(--text-2)"
-              >
-                {c}
-              </span>
-            ))}
+      {result && (() => {
+        const s = summarize(result);
+        return (
+          <div className="mt-3">
+            {/* Verdict + hero: the one number the user came for. */}
+            <div className="rounded-xl bg-(--surface-2) p-3.5 ring-1 ring-(--border)">
+              <div className="flex items-center gap-1.5 text-[11.5px] font-bold" style={{ color: s.verdict.tone }}>
+                <span aria-hidden>{s.verdict.mark}</span>
+                {s.verdict.label}
+              </div>
+              <div className="mt-2 flex items-baseline gap-2.5">
+                <span className="tnum text-[34px] font-bold leading-none tracking-tight" style={{ color: s.verdict.tone }}>
+                  {s.pct}
+                </span>
+                <div className="leading-tight">
+                  <div className="eyebrow">Trips completed</div>
+                  <div className="tnum text-[13px] font-semibold text-(--text-2)">{s.tripsA} → {s.tripsB}</div>
+                </div>
+              </div>
+              {s.tradeoff && (
+                <div className="mt-3 flex items-center gap-2.5 border-t border-(--border) pt-2.5 text-[11px] font-semibold">
+                  <span className="eyebrow">Trade-off</span>
+                  <span className="text-(--good)">↑ throughput</span>
+                  <span className="text-(--bad)">↓ avg speed</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 mb-2 flex flex-wrap items-center gap-1.5">
+              <span className="eyebrow">Baseline → change</span>
+              {result.changes.map((c) => (
+                <span
+                  key={c}
+                  className="tnum rounded-md bg-(--surface-3) px-2 py-0.5 text-[10px] font-semibold text-(--text-2)"
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+            <div className="flex flex-col gap-1">
+              {SECONDARY.map((m) => {
+                const a = m.get(result.baseline);
+                const b = m.get(result.intervention);
+                return (
+                  <ImpactRow key={m.label} label={m.label} a={m.fmt(a)} b={m.fmt(b)} delta={b - a} better={m.better} rel={a ? (b - a) / Math.abs(a) : 0} />
+                );
+              })}
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-(--text-3)">
+              Both ran from the same seed for {mins(result.durationTicks)} — the delta is your change, not
+              time or noise.
+            </p>
           </div>
-          <div className="flex flex-col gap-1">
-            {METRICS.map((m) => {
-              const a = m.get(result.baseline);
-              const b = m.get(result.intervention);
-              return (
-                <ImpactRow key={m.label} label={m.label} a={m.fmt(a)} b={m.fmt(b)} delta={b - a} better={m.better} rel={a ? (b - a) / Math.abs(a) : 0} />
-              );
-            })}
-          </div>
-          <p className="mt-3 text-[11px] leading-relaxed text-(--text-3)">
-            Both ran from the same seed for {mins(result.durationTicks)} — the delta is your change, not
-            time or noise.
-          </p>
-        </div>
-      )}
+        );
+      })()}
     </section>
   );
 }

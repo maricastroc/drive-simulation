@@ -54,20 +54,17 @@ export function ActionButton({
     : 'bg-[var(--surface-2)] text-[var(--text-1)] hover:bg-[var(--surface-3)] ring-1 ring-[var(--border)]';
   const cls = `rounded-lg px-3 py-2 text-[12.5px] font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-35 ${activeBg}`;
 
-  // A disabled <button> swallows its own hover events, so native `title`/tooltips
-  // never fire. When a tooltip is set, anchor it on a wrapper that still receives
-  // hover and let pointer events pass through the (disabled) button.
   if (tooltip) {
     return (
       <span
         data-tooltip-id="uf-tip"
         data-tooltip-content={tooltip}
-        className={`block${disabled ? ' cursor-not-allowed' : ''}`}
+        className={`block${disabled ? ' cursor-not-allowed' : 'cursor-pointer '}`}
       >
         <button
           onClick={onClick}
           disabled={disabled}
-          className={`${cls} w-full${disabled ? ' pointer-events-none' : ''}`}
+          className={`${cls} cursor-pointer w-full${disabled ? ' pointer-events-none' : ''}`}
         >
           {children}
         </button>

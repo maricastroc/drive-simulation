@@ -24,7 +24,7 @@ export function thermal(t: number): RGB {
 }
 
 export function asphalt(cong: number): string {
-  return rgba(mix([24, 29, 37], [82, 45, 41], clamp01(cong)), 1);
+  return rgba(mix([37, 44, 55], [82, 45, 41], clamp01(cong)), 1);
 }
 
 export function mix(a: RGB, b: RGB, t: number): RGB {

@@ -411,8 +411,6 @@ function drawJunction(
     ring(ctx, jp.x, jp.y, r0 + 2.5, rgba(ACCENT, 0.9), 1.6);
   }
   if (o.stagedT >= 0 && o.stagedT <= 1) {
-    // One-shot confirmation: a bright ring bursts out from the node and fades,
-    // pulling the eye from the sidebar click to the change on the map.
     const s = o.stagedT;
     const ease = 1 - (1 - s) * (1 - s);
     ctx.save();

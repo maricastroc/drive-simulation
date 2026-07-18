@@ -17,8 +17,6 @@
   <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
 </p>
 
-🔗 Live demo: urban-system.marianacastro.dev
-
 <p align="center">
   <a href="#-features">Features</a> •
   <a href="#-the-simulation-engine">Simulation Engine</a> •
@@ -29,6 +27,10 @@
 
 <p align="center">
   Not a video of traffic — a live system. A pure, seeded simulation core (bit-for-bit reproducible) drives a Canvas visualization where roads, junctions and vehicles all speak one thermal language: <strong>cool = flowing, hot = congested</strong>.
+</p>
+
+<p align="center">
+  🔗 <strong>Live demo:</strong> <a href="https://book-nest.marianacastro.dev">book-nest.marianacastro.dev</a>
 </p>
 
 <br/>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { tick } from '@/engine';
 import { createScene } from '@/render/scene';
-import { PRESETS, centralJunction } from '@/render/presets';
+import { PRESETS, NETWORKS, centralJunction } from '@/render/presets';
 
 const closedCount = (scene: ReturnType<typeof createScene>) => {
   const a = scene.world.control.laneClosed;
@@ -72,5 +73,41 @@ describe('experiment presets', () => {
     preset('wave').stage!(scene);
     expect(scene.coordinated.filter((s) => s > 0).length).toBe(1);
     expect(signalCount(scene)).toBe(signals);
+  });
+});
+
+describe('network presets', () => {
+  it('exposes toy → metro at growing scales', () => {
+    expect(NETWORKS.map((n) => n.id)).toEqual(['toy', 'block', 'district', 'metro']);
+    for (let i = 1; i < NETWORKS.length; i++) {
+      expect(NETWORKS[i].grid).toBeGreaterThan(NETWORKS[i - 1].grid);
+      expect(NETWORKS[i].capacity).toBeGreaterThanOrEqual(NETWORKS[i - 1].capacity);
+    }
+  });
+
+  it('each preset builds a scene with its grid², junction count and capacity', () => {
+    for (const n of NETWORKS) {
+      const scene = createScene(n.demandRate, { grid: n.grid, capacity: n.capacity });
+      expect(scene.junctions.length).toBe(n.grid * n.grid);
+      expect(n.junctions).toBe(n.grid * n.grid);
+      expect(scene.world.agents.capacity).toBe(n.capacity);
+    }
+  });
+
+  it('capacity gives headroom — the store never overflows under its own demand', () => {
+    for (const n of NETWORKS) {
+      const scene = createScene(n.demandRate, { grid: n.grid, capacity: n.capacity });
+      for (let t = 0; t < 400; t++) tick(scene.world);
+      expect(scene.world.agents.activeCount).toBeLessThan(n.capacity);
+    }
+  });
+
+  it('is deterministic per network (same seed + grid → identical trip count)', () => {
+    const run = () => {
+      const s = createScene(NETWORKS[2].demandRate, { grid: NETWORKS[2].grid, capacity: NETWORKS[2].capacity });
+      for (let t = 0; t < 300; t++) tick(s.world);
+      return s.world.metrics.completedTrips;
+    };
+    expect(run()).toBe(run());
   });
 });

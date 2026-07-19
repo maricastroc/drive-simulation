@@ -8,7 +8,7 @@ import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventi
 import { framesToCars, frameStats } from '@/render/simFrame';
 import { createSimClient, type SimClient } from './sim/simClient';
 import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@/render/shareLink';
-import { type Preset } from '@/render/presets';
+import { type Preset, type NetworkPreset } from '@/render/presets';
 import { generateCandidates, type SweepRow, type Candidate } from '@/render/optimize';
 import { runSweepPool } from './sim/sweepPool';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
@@ -30,6 +30,7 @@ import { Telemetry } from './sim/Telemetry';
 import { type SparkHandle } from './sim/Sparkline';
 import { ControlDock } from './sim/ControlDock';
 import { Presets } from './sim/Presets';
+import { NetworkPresets } from './sim/NetworkPresets';
 import { Coach } from './sim/Coach';
 import { Inspector } from './sim/Inspector';
 import { Experiment } from './sim/Experiment';
@@ -147,6 +148,11 @@ export function SimulationCanvas({
   const [sweepResult, setSweepResult] = useState<{ baseline: Stats; rows: SweepRow[]; sig: string } | null>(null);
   const [shared, setShared] = useState(false);
   const [stagedNeedsRun, setStagedNeedsRun] = useState(false);
+
+  const [network, setNetwork] = useState(() => ({
+    grid: grid ?? DEFAULT_GRID,
+    capacity: scene.world.agents.capacity,
+  }));
   const demandSkip = useRef(true);
 
   const perfRef = useRef({ tick: 0, draw: 0, fps: 0, lastPaint: 0 });
@@ -222,11 +228,11 @@ export function SimulationCanvas({
   }, []);
 
   const reset = useCallback(() => {
-    const fresh = createScene(unitsToRate(demand), { grid: grid ?? DEFAULT_GRID, capacity: cap ?? DEFAULT_CAPACITY });
+    const fresh = createScene(unitsToRate(demand), { grid: network.grid, capacity: network.capacity });
     setSceneState(fresh);
     simClientRef.current?.reset({
-      grid: grid ?? DEFAULT_GRID,
-      capacity: cap ?? DEFAULT_CAPACITY,
+      grid: network.grid,
+      capacity: network.capacity,
       demand: unitsToRate(demand),
       speed: speedRef.current,
       playing: playingRef.current,
@@ -237,15 +243,15 @@ export function SimulationCanvas({
     setSweepResult(null);
     setStagedNeedsRun(false);
     clearShareUrl();
-  }, [demand, clearShareUrl, grid, cap]);
+  }, [demand, clearShareUrl, network]);
 
   const applyPreset = useCallback((preset: Preset) => {
-    const staged = createScene(preset.demandRate, { grid: grid ?? DEFAULT_GRID, capacity: cap ?? DEFAULT_CAPACITY });
+    const staged = createScene(preset.demandRate, { grid: network.grid, capacity: network.capacity });
     preset.stage?.(staged);
     setSceneState(staged);
     simClientRef.current?.reset({
-      grid: grid ?? DEFAULT_GRID,
-      capacity: cap ?? DEFAULT_CAPACITY,
+      grid: network.grid,
+      capacity: network.capacity,
       demand: preset.demandRate,
       speed: speedRef.current,
       playing: playingRef.current,
@@ -258,7 +264,27 @@ export function SimulationCanvas({
     setSweepResult(null);
     setStagedNeedsRun(false);
     clearShareUrl();
-  }, [clearShareUrl, grid, cap]);
+  }, [clearShareUrl, network]);
+
+  const applyNetwork = useCallback((net: NetworkPreset) => {
+    setNetwork({ grid: net.grid, capacity: net.capacity });
+    const fresh = createScene(net.demandRate, { grid: net.grid, capacity: net.capacity });
+    setSceneState(fresh);
+    simClientRef.current?.reset({
+      grid: net.grid,
+      capacity: net.capacity,
+      demand: net.demandRate,
+      speed: speedRef.current,
+      playing: playingRef.current,
+    });
+    setDemand(Math.round(net.demandRate * 10));
+    setSel(NONE_SEL);
+    setSelStats(null);
+    setExpResult(null);
+    setSweepResult(null);
+    setStagedNeedsRun(false);
+    clearShareUrl();
+  }, [clearShareUrl]);
 
   const share = useCallback(() => {
     const url = `${window.location.origin}${window.location.pathname}?${SCENARIO_PARAM}=${encodeScenario(sceneRef.current)}`;
@@ -651,7 +677,7 @@ export function SimulationCanvas({
       simClientRef.current?.dispose();
       simClientRef.current = null;
     };
-  }, [worker, grid, cap]);
+  }, [worker, grid, cap, bump]);
 
   const sinkLabels = useMemo(() => compassLabels(scene.sinks.map((l) => scene.geometry.b[l])), [scene]);
   const sinkLabelOf = useCallback(
@@ -712,6 +738,7 @@ export function SimulationCanvas({
         </div>
 
         <aside className="thin-scroll flex w-full shrink-0 flex-col gap-3 border-t border-(--border) p-3 lg:min-h-0 lg:w-92 lg:overflow-y-auto lg:border-l lg:border-t-0">
+          <NetworkPresets activeGrid={network.grid} onApply={applyNetwork} />
           <Inspector scene={scene} sel={sel} stats={selStats} actions={actions} onClear={() => select(NONE_SEL)} sinkLabelOf={sinkLabelOf} pulseJunction={pulseJunction} />
           <Telemetry flowSpark={flowSparkRef} speedSpark={speedSparkRef} freeKmh={freeKmh} />
 

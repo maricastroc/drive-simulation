@@ -88,3 +88,12 @@ export function IconTarget() {
     </svg>
   );
 }
+
+export function IconGrid() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--accent-2)" strokeWidth="1.3">
+      <rect x="2" y="2" width="12" height="12" rx="1.5" />
+      <path d="M6.5 2v12M9.5 2v12M2 6.5h12M2 9.5h12" />
+    </svg>
+  );
+}

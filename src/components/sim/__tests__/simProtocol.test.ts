@@ -7,7 +7,6 @@ import {
   applyControlSnapshot,
   scenarioSignature,
   closeLaneScene,
-  addSignalsScene,
   flipPriority,
   setDemandRate,
   type Scene,

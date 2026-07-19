@@ -734,3 +734,21 @@ rebases the flow window + sparkline sampler across the jump (and across a late p
 never shows a phantom spike. **Slider debounce:** `SimClient` throttles the high-frequency `setDemand` /
 `setSourceRate` commands (per-key leading+trailing, 70 ms) so a dragged slider can't flood the worker; the
 per-entry slider keeps a local drag value for a responsive thumb while the confirmed rate settles.
+
+## 30. Network presets — the engine at different scales (Etapa 20)
+
+A rail card (`components/sim/NetworkPresets.tsx`) swaps the whole Manhattan grid in one click — **Toy** (3×3,
+9 junctions) · **City block** (5×5, the default) · **District** (8×8) · **Metro** (12×12, 144 junctions) —
+each `NetworkPreset` (`render/presets.ts`) carrying a matched agent-store `capacity` so a denser grid has
+headroom. Demand is held constant across them, so the read is "how does the *same* load behave as the network
+grows" — the SCALE-LEAP narrative made tangible.
+
+Mechanically it reuses everything: the live grid + capacity become React state (`network`), and a swap rebuilds
+the scene (`createScene(rate, {grid, capacity})`) exactly like a reset — in worker mode a `reset{grid, capacity,
+demand}` rebuilds the worker's world at the new scale (a fresh `epoch` drops interpolation; frames re-size to
+the new capacity, which `framesToCars` already derives from the buffer length). `reset` and the scenario presets
+now rebuild at the *current* network rather than the hard default, and `?grid=N&cap=M` still overrides the
+initial scale. The scenario presets stay grid-agnostic because their targets are geometry-derived
+(`centralJunction` etc.), so "Signalize the centre" works on a 3×3 or a 12×12 alike. Share-links still assume the
+fixed default grid (§24), so a network swap clears the `?s=` param. Unit-tested: each preset builds `grid²`
+junctions at its capacity, the store never overflows under its own demand, and each scale is deterministic.

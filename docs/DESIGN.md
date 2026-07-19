@@ -638,7 +638,14 @@ unit-tests in Node without a GL context. The spotlight (`focusDimmer`, extracted
 car's alpha, so focus mode still dims the fleet. Compile/link failure or no WebGL2 → `createCarRenderer`
 returns null → the loop falls back to Canvas 2D cars (`drawCars: true`), the unchanged pre-Etapa path.
 
-**Result (verified live).** At ~1500 cars the whole CPU render dropped from ~7ms to **~0.7ms** — the cars
+**Result (verified live).** At ~1500 cars the whole CPU render dropped from ~7ms to **~1ms** — the cars
 became effectively free (submitted in one `drawArraysInstanced`), leaving only the O(lanes) chrome. Rendering
-is a pure read of state, so nothing here touches determinism or the engine tests. Deferred polish: the soft
-drop-shadow and micro-trail from `drawCar` aren't in the shader yet (a thin rim stands in).
+is a pure read of state, so nothing here touches determinism or the engine tests.
+
+**Shader polish.** The fragment shader now carries the `drawCar` cues: a soft dark **separation shadow**
+(the quad is padded by `uPad` and the SDF falloff outside the body reads as a halo) and a speed-scaled
+**micro-trail** (the quad extends behind the body, fading a thermal streak toward the tail). One gotcha
+worth recording: a shared `uPad` uniform declared `highp` in the vertex stage but `mediump` in the fragment
+stage is a **link error** in GLSL ES 3.00 — `createCarRenderer` returned null and the layer silently fell
+back to Canvas 2D. The fallback hid it; only the live draw-cost (still ~7ms, not ~1ms) gave it away. Declare
+shared uniforms with matching precision.

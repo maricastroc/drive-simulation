@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5 Canvas" />
+  <img src="https://img.shields.io/badge/WebGL-990000?style=for-the-badge&logo=webgl&logoColor=white" alt="WebGL" />
   <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
 </p>
 
@@ -26,7 +27,7 @@
 </p>
 
 <p align="center">
-  Not a video of traffic — a live system. A pure, seeded simulation core (bit-for-bit reproducible) drives a Canvas visualization where roads, junctions and vehicles all speak one thermal language: <strong>cool = flowing, hot = congested</strong>.
+  Not a video of traffic — a live system. A pure, seeded simulation core (bit-for-bit reproducible) drives a hybrid Canvas 2D + WebGL visualization where roads, junctions and vehicles all speak one thermal language: <strong>cool = flowing, hot = congested</strong>.
 </p>
 
 <p align="center">
@@ -42,13 +43,15 @@
 | **🚙 Agent-based cars**      | Every vehicle is an autonomous agent following the Intelligent Driver Model (IDM) — accelerating to its desired speed, keeping a safe headway, and queueing — with a stable integrator that never reverses and never overlaps. |
 | **🧭 Shortest-path routing** | Cars are routed by Dijkstra over the lane graph to a destination, and **detour automatically** when a road ahead is closed.                                                                                                 |
 | **🚦 Give-way & signals**    | Junctions resolve conflicts by strict-priority gap acceptance (unique ranks ⇒ deadlock-free), or switch — per junction, live — to a fixed-cycle traffic signal.                                                             |
+| **🌊 Green-wave corridors**  | Coordinate a whole one-way arterial into a **green wave** — its signals phase-staggered by travel time so a platoon rides a wave of greens. Beats an isolated signal under load, and the optimizer can discover which corridor to coordinate.                                                          |
 | **🧪 Scenario control**      | Close / reopen roads, drop incidents, retune demand per entry, choose destinations, and flip right-of-way. The network reroutes and re-settles in real time.                                                                |
-| **⚡ One-click scenarios**   | Preset situations — _rush hour_, _close the artery_, _signalize the centre_ — each stage a fresh, same-seed network, ready to watch live or run an experiment on.                                                            |
+| **⚡ One-click scenarios**   | Preset situations — _rush hour_, _close the artery_, _signalize the centre_, _green-wave the artery_ — each stage a fresh, same-seed network, ready to watch live or run an experiment on.                                   |
 | **📊 Controlled A/B**        | Stage a change (a closure, a signal…), then run baseline vs. your change on two **same-seed** worlds for the same duration — so the impact on trips, speed and travel time is _your change_, not elapsed time or noise. Runs headless; a fast-forward skips the wait for traffic to build.                                                              |
-| **🔎 Auto-optimizer**        | Let the simulation search for you: it sweeps every single-junction fix (signalize / flip priority) as a controlled **same-seed** experiment, ranks them by throughput, and surfaces a **leaderboard of what actually helps** — click a result to stage it on the live network and confirm it with the A/B.                                             |
+| **🔎 Auto-optimizer**        | Let the simulation search for you: it sweeps every fix (signalize / flip priority / green-wave a corridor) as a controlled **same-seed** experiment — **fanned out across a Web Worker pool** — ranks them by throughput, and surfaces a **leaderboard of what actually helps**. Click a result to stage it on the live network and confirm it with the A/B.                                             |
 | **🌡️ Living thermal map**    | Roads, junctions, flow and cars share one heat language: congestion warms the mesh, an always-on flow field shows each street's direction without cars, and critical junctions glow.                                         |
 | **🎯 Focus & inspect**       | Click any road, junction **or car** to spotlight it — the rest of the network recedes — and read its live stats: cars, speed, queue length, signal phase. Select a car and its **Dijkstra route** lights up all the way to its exit.                                                                                                                   |
 | **📈 Live metrics**          | A top-bar HUD with rolling **sparklines** for throughput and speed, so the network's dynamics read over time — not just as a single number.                                                                                 |
+| **🖥️ Built to scale**        | The agent layer renders through **WebGL2 instancing** — one draw call for the whole fleet — over the Canvas 2D thermal map, cutting the frame's render cost ~10× at scale. The plain-data core is what lets both the renderer and the optimizer's worker pool consume it directly.                                                                     |
 | **♻️ Deterministic & tested** | Same world + same seed → identical run, bit for bit. The pure engine (IDM, routing, give-way, signals) is fully unit-tested with Vitest.                                                                                    |
 
 <br/>
@@ -67,7 +70,7 @@ tick(world):
 ```
 
 - **Deterministic by construction** — fixed `dt = 0.2s`, a seeded `mulberry32` PRNG, fixed iteration order, and a two-phase _read-all-then-write-all_ update. Same world + same seed → identical state, so the core is testable offline with fixtures — and it powers the **controlled A/B**: baseline and intervention run on two same-seed worlds for the same duration, so the delta is the change, not time or noise. The **optimizer** cashes the same property in at scale, sweeping every candidate intervention headless against one shared baseline to rank what helps.
-- **Structure-of-Arrays** — agent state lives in typed arrays (cache-friendly, and transferable across a Web Worker / `SharedArrayBuffer` boundary later, with no reshaping).
+- **Structure-of-Arrays** — agent state lives in typed arrays (cache-friendly). The renderer packs them straight into a WebGL instance buffer, and the plain-data scene config is what lets the optimizer's sweep fan out across a **Web Worker pool** — same seed in, same result out, in parallel.
 - **Car-following (IDM)** — `idmAcceleration` is the pure Intelligent Driver Model; `integrate` uses a ballistic scheme with a stop-handling branch so a car brakes to rest _within_ a step instead of reversing, plus an overlap guard against the car ahead.
 - **The no-overtaking invariant** — with a single lane per direction, cars never reorder within a lane, so the per-lane ordered list is only ever mutated at the back (entry) and front (exit). That is the subtle correctness core that keeps the network provably overlap-free without any sorting.
 - **Give-way** — strict-priority gap acceptance: a movement yields only to a strictly-higher-rank conflicting movement that has an approaching car. Ranks are unique per node, so the top movement never yields ⇒ **no deadlock**.
@@ -84,6 +87,7 @@ tick(world):
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Canvas-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5 Canvas" />
+  <img src="https://img.shields.io/badge/WebGL-990000?style=for-the-badge&logo=webgl&logoColor=white" alt="WebGL" />
   <img src="https://img.shields.io/badge/Vitest-6E9F18?style=for-the-badge&logo=vitest&logoColor=white" alt="Vitest" />
 </p>
 
@@ -92,7 +96,7 @@ tick(world):
 | **Framework**       | Next.js 16 (App Router), React 19                                         |
 | **Language**        | TypeScript 5                                                              |
 | **Styling**         | Tailwind CSS v4                                                           |
-| **Rendering**       | HTML5 Canvas 2D — no WebGL, no rendering libraries                        |
+| **Rendering**       | Hybrid — Canvas 2D thermal chrome + **WebGL2 instanced** agent layer (raw, no rendering libraries) |
 | **Simulation core** | Framework-free TypeScript (Structure-of-Arrays typed arrays, seeded PRNG) |
 | **Testing**         | Vitest                                                                    |
 | **Tooling**         | ESLint                                                                    |

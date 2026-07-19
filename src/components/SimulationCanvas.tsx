@@ -79,6 +79,7 @@ export function SimulationCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sweepingRef = useRef(false);
 
 
   const [scene, setSceneState] = useState<Scene>(() => buildInitialScene(scenarioParam, grid, cap));
@@ -234,6 +235,8 @@ export function SimulationCanvas({
   }, [bump]);
 
   const runSweep = useCallback(() => {
+    if (sweepingRef.current) return;
+    sweepingRef.current = true;
     const scene = sceneRef.current;
     const candidates = generateCandidates(scene);
     const cfg = captureConfig(scene);
@@ -245,6 +248,7 @@ export function SimulationCanvas({
       ({ baseStats, rows }) => {
         setSweepResult({ baseline: baseStats, rows, sig });
         setSweepRunning(false);
+        sweepingRef.current = false;
       },
     );
   }, []);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createScene } from '@/render/scene';
-import { generateCandidates, sweepBaseline, sweepCandidate } from '@/render/optimize';
+import { generateCandidates, sweepBaseline, sweepCandidate, runJob, specOf } from '@/render/optimize';
 
 describe('experiment optimizer', () => {
   it('generates signalize + flip-priority per junction and green-wave per corridor', () => {
@@ -51,5 +51,15 @@ describe('experiment optimizer', () => {
     generateCandidates(scene)[0].apply(scene);
     const after = sweepBaseline(scene, 150).stats.completedTrips;
     expect(after).toBe(before);
+  });
+
+  it('runJob equals sweepCandidate — the worker path computes the identical result', () => {
+    const scene = createScene(0.8);
+    const base = sweepBaseline(scene, 200);
+    const cands = generateCandidates(scene);
+    const sample = [cands[0], cands.find((c) => c.kind === 'greenwave')!];
+    for (const c of sample) {
+      expect(runJob(base.cfg, specOf(c), 200)).toEqual(sweepCandidate(base, c, 200).stats);
+    }
   });
 });

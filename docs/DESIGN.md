@@ -586,3 +586,30 @@ A **"Green-wave the artery"** preset coordinates the central corridor for a one-
 wave: coordinated signals need warmup, so quicker-acting priority flips out-rank it in the short window even
 though the full 5-min A/B shows the wave ahead. A longer screening (or a two-tier re-rank of the top-k) would
 value it fairly — a future tuning knob, deliberately left as-is for now.
+
+## 26. Parallel optimizer — a worker pool (Etapa 18)
+
+The determinism payoff cashed in at the engineering level: because every candidate run is a **pure function
+of `(seed, ScenarioConfig, CandidateSpec)`**, the sweep is embarrassingly parallel — N workers produce the
+*same* leaderboard as the old sequential sweep, just ~N× faster. This is the point where "the run reproduces"
+becomes "the search fans out."
+
+**The serializable unit (`render/optimize.ts`).** A `Candidate.apply` is a closure — it can't cross a worker
+boundary. So the action is split into plain data: a `CandidateSpec` (`{ kind, junction, corridor? }`) plus
+`applyCandidate(scene, spec)`, the single source of truth both `Candidate.apply` and the worker route through.
+One job is `runJob(cfg, spec | null, ticks) → Stats`: build a fresh same-seed scene, `applyConfig` the
+baseline, apply the one spec (or none, for the baseline job), tick headless, sample. `sweepBaseline` /
+`sweepCandidate` are now thin wrappers over `runJob` + `deltaRow`, so the sequential path and the worker path
+are provably identical — unit-tested (`runJob` equals `sweepCandidate().stats`).
+
+**The pool (`components/sim/sweepPool.ts` + `sweep.worker.ts`).** `ScenarioConfig` is structured-cloneable
+(typed arrays + `Set`s), so it posts straight to a worker. `runSweepPool` builds the job list (baseline +
+one per candidate), lazily spins up `min(hardwareConcurrency − 1, 8)` module workers, and hands each free
+worker the next job until the queue drains — then assembles `deltaRow`s against the baseline job's stats and
+sorts. Order-independent (results keyed by job index), so parallelism can't change the ranking.
+
+**Robust by construction.** No `Worker` (SSR/old env) → a chunked main-thread `runJob` loop (the old
+behaviour, non-blocking, survives a throttled tab). A worker erroring mid-sweep → terminate the pool, finish
+the remaining jobs on the main thread, and skip workers next time. A `settled` guard makes the two completion
+paths mutually exclusive. The pool lives in the shell (`components/`), never in `engine`/`render`, which stay
+DOM-free. Verified live under Turbopack: 8 workers spun up and returned a correct leaderboard.

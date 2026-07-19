@@ -4,10 +4,11 @@ import 'react-tooltip/dist/react-tooltip.css';
 import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
-import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventions, scenarioSignature, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
+import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventions, captureConfig, scenarioSignature, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
 import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@/render/shareLink';
 import { type Preset } from '@/render/presets';
-import { generateCandidates, sweepBaseline, sweepCandidate, type SweepRow, type Candidate } from '@/render/optimize';
+import { generateCandidates, type SweepRow, type Candidate } from '@/render/optimize';
+import { runSweepPool } from './sim/sweepPool';
 import { carRoute, isSelectedCarLive } from '@/render/carTrace';
 import { drawScene, type RenderCar, type RenderOverlay } from '@/render/renderer';
 import {
@@ -42,7 +43,6 @@ const fmtClock = (sec: number) => {
 };
 const EMPTY_ROUTE: number[] = [];
 const SWEEP_TICKS = 300;
-const SWEEP_CHUNK = 2;
 
 function buildInitialScene(
   scenarioParam: string | null | undefined,
@@ -79,10 +79,7 @@ export function SimulationCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
 
-  const initialScene = useRef<Scene | null>(null);
-  if (initialScene.current === null) initialScene.current = buildInitialScene(scenarioParam, grid, cap);
-
-  const [scene, setSceneState] = useState<Scene>(initialScene.current);
+  const [scene, setSceneState] = useState<Scene>(() => buildInitialScene(scenarioParam, grid, cap));
   const sceneRef = useRef<Scene>(scene);
   const cap0 = scene.world.agents.capacity;
   const prevSRef = useRef<Float32Array>(new Float32Array(cap0));
@@ -117,7 +114,7 @@ export function SimulationCanvas({
 
   const [playing, setPlaying] = useState(true);
   const [speed, setSpeed] = useState(1);
-  const [demand, setDemand] = useState(() => demandUnitsOf(initialScene.current!));
+  const [demand, setDemand] = useState(() => demandUnitsOf(scene));
   const [sel, setSel] = useState<Selection>(NONE_SEL);
   const [selStats, setSelStats] = useState<SelStats | null>(null);
   const [, forceRender] = useState(0);
@@ -237,28 +234,17 @@ export function SimulationCanvas({
   const runSweep = useCallback(() => {
     const scene = sceneRef.current;
     const candidates = generateCandidates(scene);
+    const cfg = captureConfig(scene);
     const sig = scenarioSignature(scene);
     setSweepRunning(true);
     setSweepResult(null);
-    setSweepProg({ done: 0, total: candidates.length });
-    window.setTimeout(() => {
-      const base = sweepBaseline(scene, SWEEP_TICKS);
-      const rows: SweepRow[] = [];
-      let i = 0;
-      const step = () => {
-        const end = Math.min(i + SWEEP_CHUNK, candidates.length);
-        for (; i < end; i++) rows.push(sweepCandidate(base, candidates[i], SWEEP_TICKS));
-        setSweepProg({ done: i, total: candidates.length });
-        if (i < candidates.length) {
-          window.setTimeout(step, 0);
-        } else {
-          rows.sort((a, b) => b.tripsDelta - a.tripsDelta || b.speedDelta - a.speedDelta);
-          setSweepResult({ baseline: base.stats, rows, sig });
-          setSweepRunning(false);
-        }
-      };
-      step();
-    }, 30);
+    setSweepProg({ done: 0, total: candidates.length + 1 });
+    runSweepPool(cfg, candidates, SWEEP_TICKS, (done, total) => setSweepProg({ done, total })).then(
+      ({ baseStats, rows }) => {
+        setSweepResult({ baseline: baseStats, rows, sig });
+        setSweepRunning(false);
+      },
+    );
   }, []);
 
   const stageCandidate = useCallback(

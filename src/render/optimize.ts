@@ -12,14 +12,36 @@ import {
   type ScenarioConfig,
 } from './scene';
 
+export type CandidateKind = 'signal' | 'priority' | 'greenwave';
+
+// Structured-cloneable candidate action, so it can be posted to a worker.
+export interface CandidateSpec {
+  readonly kind: CandidateKind;
+  readonly junction: number;
+  readonly corridor?: number;
+}
+
 export interface Candidate {
   readonly id: string;
   readonly label: string;
-  readonly kind: 'signal' | 'priority' | 'greenwave';
+  readonly kind: CandidateKind;
   readonly junction: number;
-  /** Corridor index for a `greenwave` candidate (undefined otherwise). */
   readonly corridor?: number;
   apply(scene: Scene): void;
+}
+
+export function specOf(c: Candidate): CandidateSpec {
+  return { kind: c.kind, junction: c.junction, corridor: c.corridor };
+}
+
+export function applyCandidate(scene: Scene, spec: CandidateSpec): void {
+  if (spec.kind === 'signal') {
+    if (scene.signals[spec.junction]?.enabled !== true) toggleSignal(scene, spec.junction);
+  } else if (spec.kind === 'priority') {
+    flipPriority(scene, spec.junction);
+  } else if (spec.kind === 'greenwave' && spec.corridor !== undefined) {
+    greenWave(scene, spec.corridor);
+  }
 }
 
 export function generateCandidates(scene: Scene): Candidate[] {
@@ -36,9 +58,7 @@ export function generateCandidates(scene: Scene): Candidate[] {
         label: `Signalize ${j.node}`,
         kind: 'signal',
         junction: idx,
-        apply: (s) => {
-          if (s.signals[idx]?.enabled !== true) toggleSignal(s, idx);
-        },
+        apply: (s) => applyCandidate(s, { kind: 'signal', junction: idx }),
       });
     }
     if (!signalized && !flipped) {
@@ -47,7 +67,7 @@ export function generateCandidates(scene: Scene): Candidate[] {
         label: `Flip priority ${j.node}`,
         kind: 'priority',
         junction: idx,
-        apply: (s) => flipPriority(s, idx),
+        apply: (s) => applyCandidate(s, { kind: 'priority', junction: idx }),
       });
     }
   });
@@ -60,7 +80,7 @@ export function generateCandidates(scene: Scene): Candidate[] {
       kind: 'greenwave',
       junction: cor.junctions[Math.floor(cor.junctions.length / 2)],
       corridor: i,
-      apply: (s) => greenWave(s, i),
+      apply: (s) => applyCandidate(s, { kind: 'greenwave', junction: 0, corridor: i }),
     });
   });
   return out;
@@ -78,29 +98,38 @@ export interface SweepRow {
   readonly speedDelta: number;
 }
 
-function runFor(scene: Scene, ticks: number): void {
-  for (let n = 0; n < ticks; n++) tick(scene.world);
+export interface SweepJob {
+  readonly cfg: ScenarioConfig;
+  readonly spec: CandidateSpec | null;
+  readonly ticks: number;
+}
+
+export interface SweepJobResult {
+  readonly stats: Stats;
+}
+
+export function runJob(cfg: ScenarioConfig, spec: CandidateSpec | null, ticks: number): Stats {
+  const w = createScene(0);
+  applyConfig(w, cfg, true);
+  if (spec) applyCandidate(w, spec);
+  for (let n = 0; n < ticks; n++) tick(w.world);
+  return sampleStats(w.world);
+}
+
+export function deltaRow(candidate: Candidate, stats: Stats, base: Stats): SweepRow {
+  return {
+    candidate,
+    stats,
+    tripsDelta: base.completedTrips ? (stats.completedTrips - base.completedTrips) / base.completedTrips : 0,
+    speedDelta: base.avgSpeedKmh ? (stats.avgSpeedKmh - base.avgSpeedKmh) / base.avgSpeedKmh : 0,
+  };
 }
 
 export function sweepBaseline(scene: Scene, ticks: number): Baseline {
   const cfg = captureConfig(scene);
-  const w = createScene(0);
-  applyConfig(w, cfg, true);
-  runFor(w, ticks);
-  return { cfg, stats: sampleStats(w.world) };
+  return { cfg, stats: runJob(cfg, null, ticks) };
 }
 
 export function sweepCandidate(base: Baseline, candidate: Candidate, ticks: number): SweepRow {
-  const w = createScene(0);
-  applyConfig(w, base.cfg, true);
-  candidate.apply(w);
-  runFor(w, ticks);
-  const stats = sampleStats(w.world);
-  const b = base.stats;
-  return {
-    candidate,
-    stats,
-    tripsDelta: b.completedTrips ? (stats.completedTrips - b.completedTrips) / b.completedTrips : 0,
-    speedDelta: b.avgSpeedKmh ? (stats.avgSpeedKmh - b.avgSpeedKmh) / b.avgSpeedKmh : 0,
-  };
+  return deltaRow(candidate, runJob(base.cfg, specOf(candidate), ticks), base.stats);
 }

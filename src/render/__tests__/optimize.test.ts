@@ -64,20 +64,15 @@ describe('experiment optimizer', () => {
   });
 
   it('runs at a non-default grid — headless replays rebuild the SAME network', () => {
-    // Regression: the config now carries grid+capacity, so the A/B/optimizer no
-    // longer silently rebuild a 5×5 when the live scene is bigger.
     const scene = createScene(0.8, { grid: 8, capacity: 800 });
     const base = sweepBaseline(scene, 150);
     expect(base.cfg.grid).toBe(8);
     expect(base.cfg.capacity).toBe(800);
 
     const cands = generateCandidates(scene);
-    // A signal candidate on a high junction index (impossible on a 5×5's 25 junctions)
-    // must apply cleanly, proving the job builds the 8×8 — not the default grid.
     const highSignal = cands.find((c) => c.kind === 'signal' && c.junction >= 40)!;
     expect(highSignal).toBeDefined();
     expect(() => runJob(base.cfg, specOf(highSignal), 150)).not.toThrow();
-    // And it stays deterministic at the new scale.
     expect(runJob(base.cfg, specOf(highSignal), 150)).toEqual(runJob(base.cfg, specOf(highSignal), 150));
   });
 });

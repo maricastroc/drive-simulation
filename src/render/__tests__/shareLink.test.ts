@@ -179,6 +179,6 @@ describe('shareLink — network grid', () => {
 
   it('a malformed network field decodes to null', () => {
     expect(decodeScenario('1~nx~d4')).toBeNull();
-    expect(decodeScenario('1~n1~d4')).toBeNull(); // grid < 2
+    expect(decodeScenario('1~n1~d4')).toBeNull();
   });
 });

@@ -23,13 +23,13 @@ describe('packCarInstances', () => {
     expect(data.length).toBeGreaterThanOrEqual(count * CAR_STRIDE);
     for (let i = 0; i < count; i++) {
       const o = i * CAR_STRIDE;
-      expect(data[o + 4]).toBeGreaterThan(0); // halfLen
-      expect(data[o + 5]).toBeGreaterThan(0); // halfWid
+      expect(data[o + 4]).toBeGreaterThan(0);
+      expect(data[o + 5]).toBeGreaterThan(0);
       for (let k = 6; k < 9; k++) {
         expect(data[o + k]).toBeGreaterThanOrEqual(0);
         expect(data[o + k]).toBeLessThanOrEqual(1);
       }
-      expect(data[o + 9]).toBe(1); // alpha (no dimming)
+      expect(data[o + 9]).toBe(1);
     }
   });
 

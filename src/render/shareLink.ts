@@ -68,13 +68,11 @@ function posInt(v: string): number {
   return parseInt(v, 10);
 }
 
-/** Read the current scene's overlay into a compact, URL-safe string. */
 export function encodeScenario(scene: Scene): string {
   const control = scene.world.control;
   const conns = scene.world.graph.connections;
   const parts: string[] = [VERSION];
 
-  // Emitted only for a non-default network, so 5×5 links stay byte-identical.
   if (scene.grid !== DEFAULT_GRID) parts.push('n' + scene.grid);
 
   const rates = scene.sources.map((s) => Math.round(s.rate * 10));

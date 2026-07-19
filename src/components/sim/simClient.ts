@@ -115,8 +115,6 @@ export function createSimClient(cfg: SimClientConfig): SimClient | null {
     const m = e.data;
     switch (m.type) {
       case 'frame':
-        // A fresh epoch (reset / scenario swap) invalidates interpolation against
-        // the prior frame, so drop `prev` across the boundary.
         prev = m.epoch === curEpoch ? cur : null;
         cur = m.frame;
         curEpoch = m.epoch;

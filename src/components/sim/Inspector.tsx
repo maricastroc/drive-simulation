@@ -189,9 +189,6 @@ function EntryControls({
   actions: InspectorActions;
   sinkLabelOf: (sink: number) => string;
 }) {
-  // Local drag value keeps the slider responsive while the worker confirms the
-  // rate asynchronously (the command is throttled). Cleared on release, when the
-  // confirmed mirror rate takes over.
   const [drag, setDrag] = useState<number | null>(null);
   const units = drag ?? Math.round(ctl.rate * 10);
   const rate = units / 10;

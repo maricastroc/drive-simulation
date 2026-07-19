@@ -833,6 +833,46 @@ product. Each change is small, identity-preserving, and reversible.
   phase (Inspector + live telemetry). The eye is led down the sequence to the next action instead of scanning
   equal-weight cards.
 
+- **A soberer accent.** The UI accent deepened `#5c92eb → #4a80d6` (with `--accent-2` and the slider-thumb
+  glows tracking it) — a more mature, less saturated blue that also lifts white-on-accent contrast. The
+  **canvas** accent is a separate literal (`renderer.ts` `ACCENT = [96,165,250]`), so route/selection highlights
+  stay vivid — the sober-chrome / vivid-map split is intentional.
+
 *(Verified: the `Flow /min` HUD reading 0.0 in a backgrounded/automation tab is not a bug — it's the
 `jump > 5` guard zeroing a rate that's meaningless across a throttled-rAF gap. It reads correctly when the tab
 is focused.)*
+
+## 33. Decomposing the `SimulationCanvas` god component (Etapa 21)
+
+`SimulationCanvas` had grown to ~870 lines mixing six concerns: state, the rAF render loop, the worker-client
+lifecycle, the action layer, experiment/sweep orchestration, and JSX. A mapping identified it as the one true
+god component (Inspector 330 / Experiment 215 are large but internally well-factored). First extraction shipped:
+
+- **`useSimLoop` (hook).** The entire `requestAnimationFrame` loop + worker-client setup/teardown (~210 lines)
+  moved to `components/sim/useSimLoop.ts`. It's a pure read of simulation state (worker frames interpolated, or
+  the local world ticked as fallback) → determinism untouched. The many mutable handles it reads each frame are
+  passed as one `useMemo`-stable `SimLoopRefs` bundle, so the effect keeps its original `[worker, grid, cap]`
+  re-setup semantics and stays lint-clean without a single stable ref in the dep array. The component keeps
+  owning the refs (other callbacks touch them); the hook only owns the loop. `SimulationCanvas` dropped to
+  ~660 lines with zero behaviour change — verified live (warm-up, off-thread render, HUD) + production build.
+- **`useSimEngine` (hook).** The action layer, collapsed. The component used to carry ~6 hand-branched
+  `if (client) c.mutate(cmd) else { sceneHelper(); bump() }` callbacks — one per intervention. They're now one
+  `mutate(m: SimMutation)` primitive: worker → `client.mutate`, local → `applyCommand` (the *same* validated
+  helper the worker runs, so the two paths can't drift — and the local branch stops using the toggle helpers,
+  gaining the command layer's idempotence for free). `actions` (the Inspector's `InspectorActions`) become thin
+  wrappers; `clearStaged` calls `mutate({clearInterventions})`. `setSourceRate` stays its own primitive (its
+  worker path is throttled). Verified live: optimizer-staged signals sync to the mirror, and toggling them off
+  from the Inspector round-trips through the new `mutate`.
+- **`useExperiments` (hook).** The product's core loop — the controlled A/B, the optimizer sweep, and staging a
+  candidate onto the live network — plus all its state (`expResult`, `expDuration`, `sweep*`, `stagedNeedsRun`).
+  The headless replays (`runExperiment`, `runSweepPool`) are grid-agnostic and read the live scene, so they work
+  identically in both modes. Two callbacks bridge the seam cleanly: `resetExperiments()` (called by
+  reset / preset / network-swap / the demo) clears the results without leaking setters, and `refoldSweepSig()`
+  re-stamps the sweep leaderboard's staleness signature after the worker confirms a staged mutation — the main
+  loop calls it via a new `onStageConfirmed` prop (which replaced passing `setSweepResult` down into the loop).
+  Verified live end-to-end: guided-demo A/B, an optimizer sweep, and staging a candidate that keeps the
+  leaderboard fresh (no false "network changed" flag) — proving the refold round-trips through the loop.
+
+The `<SimulationCanvas>` god component went **870 → 514 lines** across the three hooks, each an independent,
+behaviour-preserving step (verified by full type-check, lint, 139 tests, production build, and live drive-through
+after each). A presentational `<SimPanel>` for the `<aside>` remains as an optional further split.

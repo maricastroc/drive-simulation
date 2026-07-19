@@ -11,8 +11,7 @@ export default async function Home({
   const scenarioParam = typeof raw === 'string' ? raw : null;
 
   const debug = sp.debug !== undefined || sp.perf !== undefined;
-  // The live sim runs off-thread by default; `?main` opts into the main-thread loop
-  // (also the automatic fallback when the environment has no Worker).
+
   const worker = sp.main === undefined && sp.noworker === undefined;
   const num = (v: string | string[] | undefined): number | null =>
     typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null;

@@ -14,7 +14,6 @@ import {
 
 export type CandidateKind = 'signal' | 'priority' | 'greenwave';
 
-// Structured-cloneable candidate action, so it can be posted to a worker.
 export interface CandidateSpec {
   readonly kind: CandidateKind;
   readonly junction: number;

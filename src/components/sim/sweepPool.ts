@@ -67,8 +67,6 @@ export function runSweepPool(
       }
     };
 
-    // Compute any job still missing a result on the main thread (no workers, or a
-    // worker died mid-sweep). Chunked so it never blocks the frame loop.
     const drain = () => {
       let i = 0;
       const step = () => {

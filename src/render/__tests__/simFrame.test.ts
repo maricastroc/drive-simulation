@@ -36,7 +36,6 @@ describe('simFrame', () => {
     const at1 = framesToCars(prev, cur, 1, scene.world.vparams, g.speedLimit);
     expect(at1.length).toBe(scene.world.agents.activeCount);
 
-    // A car present in both frames on the same lane sits at prev when alpha=0, cur when alpha=1.
     const both = at1.find((c) => {
       const o = 3 + c.id * 6;
       return prev[o] > 0.5 && prev[o + 1] === c.lane;

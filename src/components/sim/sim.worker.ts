@@ -73,7 +73,6 @@ ctx.onmessage = (e) => {
 
   if (m.type === 'init' || m.type === 'reset') {
     build(m.grid, m.capacity, m.demand, m.config);
-    // Boot the ambient city mid-flow so it never opens as an empty grid.
     if (m.type === 'init' && scene) for (let i = 0; i < WARMUP_TICKS; i++) tick(scene.world);
     playing = m.type === 'init' ? (m.playing ?? true) : playing;
     speed = m.type === 'init' ? (m.speed ?? 1) : speed;
@@ -118,8 +117,6 @@ ctx.onmessage = (e) => {
     return;
   }
 
-  // Mutations — validated + applied through the shared command handler, confirmed
-  // with a monotonic revision and the resulting authoritative config.
   const res = applyCommand(scene, m);
   if (!res.ok) {
     post({ type: 'rejected', id: m.id, reason: res.reason ?? 'rejected' });

@@ -3,17 +3,15 @@
 import 'react-tooltip/dist/react-tooltip.css';
 import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { tick, setSignalPhase } from '@/engine';
-import { createScene, setDemandRate, sampleStats, runExperiment, clearInterventions, captureConfig, scenarioSignature, applyControlSnapshot, toggleLaneClosed, toggleIncident, toggleSignal, flipPriority, setSourceRate, toggleDestination, type Scene, type ExperimentResult, type Stats } from '@/render/scene';
-import { framesToCars, frameStats } from '@/render/simFrame';
-import { createSimClient, type SimClient } from './sim/simClient';
+import { tick } from '@/engine';
+import { createScene, setDemandRate, runExperiment, captureConfig, scenarioSignature, toggleSignal, type Scene } from '@/render/scene';
+import { type SimClient } from './sim/simClient';
 import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@/render/shareLink';
 import { type Preset, type NetworkPreset, PRESETS, DEFAULT_NETWORK, SHOWCASE_NETWORK, capacityForGrid, centralJunction } from '@/render/presets';
-import { generateCandidates, type SweepRow, type Candidate } from '@/render/optimize';
-import { runSweepPool } from './sim/sweepPool';
-import { carRoute, isSelectedCarLive } from '@/render/carTrace';
-import { drawScene, focusDimmer, type RenderCar, type RenderOverlay } from '@/render/renderer';
-import { createCarRenderer, packCarInstances } from '@/render/glRenderer';
+import { type RenderCar } from '@/render/renderer';
+import { useSimLoop, type SimLoopRefs } from './sim/useSimLoop';
+import { useSimEngine } from './sim/useSimEngine';
+import { useExperiments } from './sim/useExperiments';
 import {
   computeSelStats,
   compassLabels,
@@ -22,9 +20,8 @@ import {
   NONE_SEL,
   type Selection,
   type SelStats,
-  type InspectorActions,
 } from './sim/types';
-import { type SimMutation, WARMUP_TICKS } from './sim/simProtocol';
+import { WARMUP_TICKS } from './sim/simProtocol';
 import { TopBar } from './sim/TopBar';
 import { Telemetry } from './sim/Telemetry';
 import { type SparkHandle } from './sim/Sparkline';
@@ -38,31 +35,13 @@ import { Optimizer } from './sim/Optimizer';
 import { WorkflowStep, PhaseLabel } from './sim/ui';
 import { hitTest } from './sim/hitTest';
 
-const SIM_DT = 0.2;
-const MAX_STEPS = 5;
-const SAMPLE_DT = 1.0;
 const DEFAULT_DEMAND = 4;
-
-const fmtClock = (sec: number) => {
-  const t = Math.max(0, Math.floor(sec));
-  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
-};
-const EMPTY_ROUTE: number[] = [];
-const SWEEP_TICKS = 300;
 /** The guided onboarding demo (§31) coordinates the central corridor — the wave
  *  preset (demand tuned so the coordination clearly wins) — and measures it at a
  *  full 5-minute A/B, which fully credits the wave (§25). */
 const WAVE_PRESET: Preset = PRESETS.find((p) => p.id === 'wave')!;
 const DEMO_TICKS = 1500;
 const relPct = (a: number, b: number) => (a ? ((b - a) / Math.abs(a)) * 100 : 0);
-
-/** Map an optimizer candidate to its equivalent worker command. */
-function mutationOfCandidate(c: Candidate): SimMutation | null {
-  if (c.kind === 'signal') return { type: 'addSignals', junction: c.junction };
-  if (c.kind === 'priority') return { type: 'flipPriority', junction: c.junction };
-  if (c.kind === 'greenwave' && c.corridor !== undefined) return { type: 'greenWave', corridor: c.corridor };
-  return null;
-}
 
 function buildInitialScene(
   scenarioParam: string | null | undefined,
@@ -122,7 +101,6 @@ export function SimulationCanvas({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glCanvasRef = useRef<HTMLCanvasElement>(null);
-  const sweepingRef = useRef(false);
   const simClientRef = useRef<SimClient | null>(null);
   const stagePendingRef = useRef(false);
 
@@ -167,17 +145,10 @@ export function SimulationCanvas({
   const [selStats, setSelStats] = useState<SelStats | null>(null);
   const [, forceRender] = useState(0);
   const bump = useCallback(() => forceRender((n) => n + 1), []);
-  const [expResult, setExpResult] = useState<ExperimentResult | null>(null);
-  const [expRunning, setExpRunning] = useState(false);
-  const [expDuration, setExpDuration] = useState(600);
   const [coachDismissed, setCoachDismissed] = useState(!!scenarioParam);
   const [demoStarted, setDemoStarted] = useState(false);
   const [demoContrastPct, setDemoContrastPct] = useState(0);
-  const [sweepRunning, setSweepRunning] = useState(false);
-  const [sweepProg, setSweepProg] = useState({ done: 0, total: 0 });
-  const [sweepResult, setSweepResult] = useState<{ baseline: Stats; rows: SweepRow[]; sig: string } | null>(null);
   const [shared, setShared] = useState(false);
-  const [stagedNeedsRun, setStagedNeedsRun] = useState(false);
 
   const [network, setNetwork] = useState(() => ({
     grid: scene.grid,
@@ -257,6 +228,14 @@ export function SimulationCanvas({
     if (window.location.search) window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
+  const { mutate, actions } = useSimEngine(simClientRef, sceneRef, bump);
+
+  const {
+    expResult, expRunning, expDuration, setExpDuration, runExp, clearStaged,
+    sweepRunning, sweepProg, sweepResult, runSweep, stageCandidate, isCandidateStaged,
+    stagedNeedsRun, refoldSweepSig, resetExperiments,
+  } = useExperiments({ sceneRef, simClientRef, stagePendingRef, stagedRef, mutate, select, bump });
+
   const reset = useCallback(() => {
     const fresh = createScene(unitsToRate(demand), { grid: network.grid, capacity: network.capacity });
     setSceneState(fresh);
@@ -269,11 +248,9 @@ export function SimulationCanvas({
     });
     setSel(NONE_SEL);
     setSelStats(null);
-    setExpResult(null);
-    setSweepResult(null);
-    setStagedNeedsRun(false);
+    resetExperiments();
     clearShareUrl();
-  }, [demand, clearShareUrl, network]);
+  }, [demand, clearShareUrl, network, resetExperiments]);
 
   const applyPreset = useCallback((preset: Preset) => {
     const staged = createScene(preset.demandRate, { grid: network.grid, capacity: network.capacity });
@@ -290,12 +267,10 @@ export function SimulationCanvas({
     setDemand(Math.round(preset.demandRate * 10));
     setSel(NONE_SEL);
     setSelStats(null);
-    setExpResult(null);
-    setSweepResult(null);
-    setStagedNeedsRun(false);
+    resetExperiments();
     setCoachDismissed(true);
     clearShareUrl();
-  }, [clearShareUrl, network]);
+  }, [clearShareUrl, network, resetExperiments]);
 
   const applyNetwork = useCallback((net: NetworkPreset) => {
     setNetwork({ grid: net.grid, capacity: net.capacity });
@@ -311,12 +286,10 @@ export function SimulationCanvas({
     setDemand(Math.round(net.demandRate * 10));
     setSel(NONE_SEL);
     setSelStats(null);
-    setExpResult(null);
-    setSweepResult(null);
-    setStagedNeedsRun(false);
+    resetExperiments();
     setCoachDismissed(true);
     clearShareUrl();
-  }, [clearShareUrl]);
+  }, [clearShareUrl, resetExperiments]);
 
   const applyGuidedDemo = useCallback(() => {
     const dm = WAVE_PRESET.demandRate;
@@ -335,9 +308,7 @@ export function SimulationCanvas({
     setDemand(Math.round(dm * 10));
     setSel(NONE_SEL);
     setSelStats(null);
-    setSweepResult(null);
-    setStagedNeedsRun(false);
-    setExpResult(null);
+    resetExperiments();
     setExpDuration(DEMO_TICKS);
     clearShareUrl();
 
@@ -346,7 +317,7 @@ export function SimulationCanvas({
     const r = runExperiment(solo, DEMO_TICKS);
     setDemoContrastPct(relPct(r.baseline.avgSpeedKmh, r.intervention.avgSpeedKmh));
     setDemoStarted(true);
-  }, [network, clearShareUrl]);
+  }, [network, clearShareUrl, resetExperiments, setExpDuration]);
 
   const share = useCallback(() => {
     const url = `${window.location.origin}${window.location.pathname}?${SCENARIO_PARAM}=${encodeScenario(sceneRef.current)}`;
@@ -356,139 +327,8 @@ export function SimulationCanvas({
     window.setTimeout(() => setShared(false), 1800);
   }, []);
 
-  const runExp = useCallback(() => {
-    setExpRunning(true);
-    setStagedNeedsRun(false);
-    window.setTimeout(() => {
-      setExpResult(runExperiment(sceneRef.current, expDuration));
-      setExpRunning(false);
-    }, 30);
-  }, [expDuration]);
-
-  const clearStaged = useCallback(() => {
-    const c = simClientRef.current;
-    if (c) c.mutate({ type: 'clearInterventions' });
-    else {
-      clearInterventions(sceneRef.current);
-      bump();
-    }
-    setExpResult(null);
-    setStagedNeedsRun(false);
-  }, [bump]);
-
-  const runSweep = useCallback(() => {
-    if (sweepingRef.current) return;
-    sweepingRef.current = true;
-    const scene = sceneRef.current;
-    const candidates = generateCandidates(scene);
-    const cfg = captureConfig(scene);
-    const sig = scenarioSignature(scene);
-    setSweepRunning(true);
-    setSweepResult(null);
-    setSweepProg({ done: 0, total: candidates.length + 1 });
-    runSweepPool(cfg, candidates, SWEEP_TICKS, (done, total) => setSweepProg({ done, total })).then(
-      ({ baseStats, rows }) => {
-        setSweepResult({ baseline: baseStats, rows, sig });
-        setSweepRunning(false);
-        sweepingRef.current = false;
-      },
-    );
-  }, []);
-
-  const stageCandidate = useCallback(
-    (c: Candidate) => {
-      const client = simClientRef.current;
-      if (client) {
-        const m = mutationOfCandidate(c);
-        if (m) {
-          stagePendingRef.current = true;
-          client.mutate(m);
-        }
-      } else {
-        c.apply(sceneRef.current);
-        setSweepResult((r) => (r ? { ...r, sig: scenarioSignature(sceneRef.current) } : r));
-        bump();
-      }
-      stagedRef.current = { junction: c.junction, at: performance.now() };
-      select({ kind: 'junction', j: c.junction });
-      setStagedNeedsRun(true);
-    },
-    [select, bump],
-  );
-
   const pulseJunction = useCallback((j: number) => {
     stagedRef.current = { junction: j, at: performance.now() };
-  }, []);
-
-  const actions: InspectorActions = useMemo(
-    () => ({
-      toggleClose: (lane, closed) => {
-        const c = simClientRef.current;
-        if (c) c.mutate(closed ? { type: 'reopenRoad', lane } : { type: 'closeRoad', lane });
-        else {
-          toggleLaneClosed(sceneRef.current, lane);
-          bump();
-        }
-      },
-      toggleIncident: (lane, s, has) => {
-        const c = simClientRef.current;
-        if (c) c.mutate(has ? { type: 'removeIncident', lane } : { type: 'addIncident', lane, s });
-        else {
-          toggleIncident(sceneRef.current, lane, s);
-          bump();
-        }
-      },
-      toggleSignal: (j, on) => {
-        const c = simClientRef.current;
-        if (c) c.mutate(on ? { type: 'removeSignals', junction: j } : { type: 'addSignals', junction: j });
-        else {
-          toggleSignal(sceneRef.current, j);
-          bump();
-        }
-      },
-      flipPriority: (j) => {
-        const c = simClientRef.current;
-        if (c) c.mutate({ type: 'flipPriority', junction: j });
-        else {
-          flipPriority(sceneRef.current, j);
-          bump();
-        }
-      },
-      setSourceRate: (lane, rate) => {
-        const c = simClientRef.current;
-        if (c) c.setSourceRate(lane, rate);
-        else {
-          const ctl = sceneRef.current.sources.find((s) => s.lane === lane);
-          if (ctl) {
-            setSourceRate(sceneRef.current, ctl, rate);
-            bump();
-          }
-        }
-      },
-      toggleDestination: (lane, sink) => {
-        const c = simClientRef.current;
-        if (c) c.mutate({ type: 'toggleDestination', lane, sink });
-        else {
-          const ctl = sceneRef.current.sources.find((s) => s.lane === lane);
-          if (ctl) {
-            toggleDestination(sceneRef.current, ctl, sink);
-            bump();
-          }
-        }
-      },
-    }),
-    [bump],
-  );
-
-  const isCandidateStaged = useCallback((c: Candidate) => {
-    const scene = sceneRef.current;
-    if (c.kind === 'greenwave') return c.corridor !== undefined && scene.coordinated[c.corridor] > 0;
-    if (c.kind === 'signal') return scene.signals[c.junction]?.enabled === true;
-    const { rank } = scene.world.control;
-    const conns = scene.world.graph.connections;
-    return scene.junctions[c.junction].approaches.some((ap) =>
-      ap.conns.some((ci) => rank[ci] !== conns[ci].rank),
-    );
   }, []);
 
   const fastForward = useCallback(() => {
@@ -534,215 +374,16 @@ export function SimulationCanvas({
     hoverJctRef.current = -1;
   }, []);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const glCanvas = glCanvasRef.current;
-    const gl = glCanvas?.getContext('webgl2', { alpha: true, antialias: true, premultipliedAlpha: false }) ?? null;
-    const carGL = gl ? createCarRenderer(gl) : null;
-    let packBuf: Float32Array | undefined;
-
-    if (worker) {
-      const client = createSimClient({
-        grid: sceneRef.current.grid,
-        capacity: sceneRef.current.world.agents.capacity,
-        demand: unitsToRate(DEFAULT_DEMAND),
-        speed: speedRef.current,
-        playing: playingRef.current,
-        config: captureConfig(sceneRef.current),
-      });
-      client?.onControl((config) => {
-        applyControlSnapshot(sceneRef.current, config);
-        if (stagePendingRef.current) {
-          stagePendingRef.current = false;
-          setSweepResult((r) => (r ? { ...r, sig: scenarioSignature(sceneRef.current) } : r));
-        }
-        bump();
-      });
-      simClientRef.current = client;
-    }
-
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(canvas.clientWidth * dpr);
-      canvas.height = Math.round(canvas.clientHeight * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      if (glCanvas) {
-        glCanvas.width = Math.round(glCanvas.clientWidth * dpr);
-        glCanvas.height = Math.round(glCanvas.clientHeight * dpr);
-      }
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    let raf = 0;
-    const loop = (ts: number) => {
-      const scene = sceneRef.current;
-      const { world } = scene;
-      const { agents } = world;
-      const prevS = prevSRef.current;
-      const prevActive = prevActiveRef.current;
-      const prevLane = prevLaneRef.current;
-
-      const last = lastTsRef.current || ts;
-      const frameMs = ts - last;
-      let dtReal = (ts - last) / 1000;
-      lastTsRef.current = ts;
-      if (dtReal > 0.1) dtReal = 0.1;
-
-      if (playingRef.current) accRef.current += dtReal * speedRef.current;
-
-      let steps = 0;
-      let tickMs = 0;
-      let cars: RenderCar[];
-      let st: Stats;
-      let clientGridOk = false;
-      const client = simClientRef.current;
-      if (client) {
-        const fr = client.frames();
-
-        if (fr.cur && fr.grid === scene.grid) {
-          clientGridOk = true;
-          const expected = (SIM_DT * 1000) / Math.max(fr.speed, 0.001);
-          const alpha = Math.min((ts - fr.arrival) / expected, 1);
-          cars = framesToCars(fr.prev, fr.cur, alpha, world.vparams, world.graph.speedLimit);
-          const fs = frameStats(fr.cur);
-          st = { cars: fs.cars, avgSpeedKmh: fs.avgSpeedKmh, completedTrips: fs.completedTrips, avgTravelTime: 0, time: fs.time };
-          const ph = fr.sigPhase;
-          for (let j = 0; j < scene.signals.length; j++) {
-            const sc = scene.signals[j];
-            if (sc && ph[j] >= 0) setSignalPhase(world.control, sc, ph[j]);
-          }
-        } else {
-          cars = [];
-          st = { cars: 0, avgSpeedKmh: 0, completedTrips: 0, avgTravelTime: 0, time: 0 };
-        }
-      } else {
-        const tickT0 = performance.now();
-        while (accRef.current >= SIM_DT && steps < MAX_STEPS) {
-          prevS.set(agents.s);
-          prevActive.set(agents.active);
-          prevLane.set(agents.lane);
-          tick(world);
-          accRef.current -= SIM_DT;
-          steps += 1;
-        }
-        tickMs = performance.now() - tickT0;
-        const alpha = Math.min(accRef.current / SIM_DT, 1);
-        const v0 = world.graph.speedLimit[0] * world.vparams[0].v0Factor;
-        cars = [];
-        for (let id = 0; id < agents.capacity; id++) {
-          if (!agents.active[id]) continue;
-          const lane = agents.lane[id];
-          const curS = agents.s[id];
-          const interp = prevActive[id] === 1 && prevLane[id] === lane;
-          const s = interp ? prevS[id] + (curS - prevS[id]) * alpha : curS;
-          cars.push({ id, key: agents.enterTime[id], lane, s, length: world.vparams[agents.type[id]].length, speedFrac: agents.v[id] / v0 });
-        }
-        st = sampleStats(world);
-      }
-      carsRef.current = cars;
-
-      const cur = selRef.current;
-      let selCar = -1;
-      let carRouteLanes: readonly number[] = EMPTY_ROUTE;
-      let carRouteI = -1;
-      if (cur.kind === 'car') {
-        if (client) {
-          const route = clientGridOk ? client.selection()?.route : null;
-          if (route) {
-            selCar = cur.id;
-            carRouteLanes = route.lanes;
-            carRouteI = route.idx;
-          }
-        } else if (isSelectedCarLive(world, cur.id, cur.key)) {
-          selCar = cur.id;
-          const r = carRoute(world, cur.id);
-          if (r) {
-            carRouteLanes = r.lanes;
-            carRouteI = r.idx;
-          }
-        }
-      }
-      const overlay: RenderOverlay = {
-        selectedLane: cur.kind === 'lane' ? cur.lane : -1,
-        hoverLane: hoverLaneRef.current,
-        selectedJunction: cur.kind === 'junction' ? cur.j : -1,
-        hoverJunction: hoverJctRef.current,
-        selectedCar: selCar,
-        carRoute: carRouteLanes,
-        carRouteIdx: carRouteI,
-        now: ts,
-        stagedJunction: stagedRef.current.junction,
-        stagedAt: stagedRef.current.at,
-      };
-      const drawT0 = performance.now();
-      drawScene(ctx, canvas.clientWidth, canvas.clientHeight, scene, cars, overlay, { drawCars: !carGL });
-      if (carGL) {
-        const packed = packCarInstances(scene.geometry, canvas.clientWidth, canvas.clientHeight, cars, focusDimmer(scene, overlay), packBuf);
-        packBuf = packed.data;
-        carGL.draw(canvas.clientWidth, canvas.clientHeight, packed.data, packed.count);
-      }
-      const drawMs = performance.now() - drawT0;
-
-      const jump = st.time - flowRef.current.t;
-      if (jump < 0 || jump > 5) {
-        flowRef.current = { t: st.time, trips: st.completedTrips, val: 0 };
-        sampleRef.current = { t: st.time, trips: st.completedTrips };
-      }
-
-      const f = flowRef.current;
-      if (st.time - f.t >= 1.5) {
-        f.val = ((st.completedTrips - f.trips) / (st.time - f.t)) * 60;
-        f.t = st.time;
-        f.trips = st.completedTrips;
-      }
-      const d = dispRef.current;
-      d.cars += (st.cars - d.cars) * 0.14;
-      d.flow += (f.val - d.flow) * 0.1;
-      d.speed += (st.avgSpeedKmh - d.speed) * 0.12;
-      if (hudCars.current) hudCars.current.textContent = String(Math.round(d.cars));
-      if (hudFlow.current) hudFlow.current.textContent = d.flow.toFixed(1);
-      if (hudSpeed.current) hudSpeed.current.textContent = String(Math.round(d.speed));
-      if (hudTrips.current) hudTrips.current.textContent = String(st.completedTrips);
-      if (hudClock.current) hudClock.current.textContent = fmtClock(st.time);
-
-      const smp = sampleRef.current;
-      const dtS = st.time - smp.t;
-      if (dtS >= SAMPLE_DT) {
-        flowSparkRef.current?.push(((st.completedTrips - smp.trips) / dtS) * 60);
-        speedSparkRef.current?.push(st.avgSpeedKmh);
-        smp.t = st.time;
-        smp.trips = st.completedTrips;
-      }
-
-      const box = perfBoxRef.current;
-      if (box) {
-        const pf = perfRef.current;
-        if (steps > 0) pf.tick += (tickMs / steps - pf.tick) * 0.2;
-        pf.draw += (drawMs - pf.draw) * 0.1;
-        if (frameMs > 0) pf.fps += (1000 / frameMs - pf.fps) * 0.1;
-        if (ts - pf.lastPaint > 250) {
-          pf.lastPaint = ts;
-          box.textContent = `${cars.length} cars · ${pf.fps.toFixed(0)} fps · tick ${pf.tick.toFixed(1)}ms · draw ${pf.draw.toFixed(1)}ms`;
-        }
-      }
-
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', resize);
-      carGL?.dispose();
-      simClientRef.current?.dispose();
-      simClientRef.current = null;
-    };
-  }, [worker, grid, cap, bump]);
+  const loopRefs = useMemo<SimLoopRefs>(
+    () => ({
+      canvasRef, glCanvasRef, sceneRef, prevSRef, prevActiveRef, prevLaneRef, accRef, lastTsRef,
+      playingRef, speedRef, selRef, hoverLaneRef, hoverJctRef, stagedRef, carsRef, simClientRef,
+      stagePendingRef, hudCars, hudFlow, hudSpeed, hudTrips, hudClock, dispRef, flowRef, sampleRef,
+      flowSparkRef, speedSparkRef, perfRef, perfBoxRef,
+    }),
+    [],
+  );
+  useSimLoop({ worker, grid, cap, initialDemand: unitsToRate(DEFAULT_DEMAND), refs: loopRefs, bump, onStageConfirmed: refoldSweepSig });
 
   const sinkLabels = useMemo(() => compassLabels(scene.sinks.map((l) => scene.geometry.b[l])), [scene]);
   const sinkLabelOf = useCallback(

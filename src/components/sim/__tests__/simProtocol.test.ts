@@ -27,7 +27,6 @@ function anIncomingLane(scene: Scene): number {
 function hashFrame(f: Float32Array): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < f.length; i++) {
-    // Round to shed the last ULP of noise; the sim is deterministic so this is exact.
     const v = Math.round(f[i] * 1e6);
     h = Math.imul(h ^ (v & 0xff), 0x01000193);
     h = Math.imul(h ^ ((v >>> 8) & 0xff), 0x01000193);
@@ -182,7 +181,6 @@ describe('simProtocol — scenario preset parity across the boundary', () => {
     const staged = createScene(preset.demandRate);
     preset.stage?.(staged);
 
-    // What the worker receives: reset(demand) + applyConfig(captureConfig(staged)).
     const worker = createScene(preset.demandRate);
     applyConfig(worker, captureConfig(staged), true);
 
@@ -193,7 +191,7 @@ describe('simProtocol — scenario preset parity across the boundary', () => {
 describe('simProtocol — determinism (direct vs protocol-driven, same seed)', () => {
   it('the same seed + same command script at the same ticks → identical frames', () => {
     const lane = anIncomingLane(createScene(DEMAND));
-    // A script of (tickIndex, command); both runs apply it identically.
+
     const script: { at: number; cmd: SimMutation }[] = [
       { at: 20, cmd: { type: 'closeRoad', lane } },
       { at: 40, cmd: { type: 'addSignals', junction: 0 } },
@@ -216,17 +214,15 @@ describe('simProtocol — determinism (direct vs protocol-driven, same seed)', (
   });
 
   it('reset/reseed rebuilds a clean scene, bit-identical to a fresh one', () => {
-    // Drive a scene with interventions + ticks, then a worker "reset" rebuilds
-    // from the same seed with no interventions — identical to a never-touched scene.
     const dirty = createScene(DEMAND);
     applyCommand(dirty, { type: 'closeRoad', lane: anIncomingLane(dirty) });
     for (let t = 0; t < 50; t++) tick(dirty.world);
 
-    const resetScene = createScene(DEMAND); // what the worker builds on reset
+    const resetScene = createScene(DEMAND);
     const fresh = createScene(DEMAND);
     expect(scenarioSignature(resetScene)).toBe(scenarioSignature(fresh));
     expect(hashFrame(packFrame(resetScene.world))).toBe(hashFrame(packFrame(fresh.world)));
-    // And the two run identically forward.
+
     for (let t = 0; t < 40; t++) {
       tick(resetScene.world);
       tick(fresh.world);

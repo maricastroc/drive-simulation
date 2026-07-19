@@ -9,14 +9,12 @@ describe('makeThrottle — slider debounce', () => {
     const seen: number[] = [];
     const t = makeThrottle();
 
-    // A burst of drag events within one window.
     for (const v of [1, 2, 3, 4, 5]) t.run('demand', () => seen.push(v));
-    expect(seen).toEqual([1]); // leading only
+    expect(seen).toEqual([1]);
 
     vi.advanceTimersByTime(70);
-    expect(seen).toEqual([1, 5]); // trailing flushes the LATEST value, not 2/3/4
+    expect(seen).toEqual([1, 5]);
 
-    // Window closed with no pending → no further calls.
     vi.advanceTimersByTime(200);
     expect(seen).toEqual([1, 5]);
   });
@@ -28,10 +26,10 @@ describe('makeThrottle — slider debounce', () => {
     t.run('rate:1', () => seen.push('b0'));
     t.run('rate:0', () => seen.push('a1'));
     t.run('rate:1', () => seen.push('b1'));
-    expect(seen).toEqual(['a0', 'b0']); // both leading edges
+    expect(seen).toEqual(['a0', 'b0']);
 
     vi.advanceTimersByTime(70);
-    expect(seen).toEqual(['a0', 'b0', 'a1', 'b1']); // each key flushes its own trailing
+    expect(seen).toEqual(['a0', 'b0', 'a1', 'b1']);
   });
 
   it('dispose cancels any pending trailing call', () => {
@@ -41,6 +39,6 @@ describe('makeThrottle — slider debounce', () => {
     t.run('demand', () => seen.push(2));
     t.dispose();
     vi.advanceTimersByTime(200);
-    expect(seen).toEqual([1]); // trailing (2) was cancelled
+    expect(seen).toEqual([1]);
   });
 });

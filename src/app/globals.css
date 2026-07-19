@@ -12,9 +12,9 @@
   --text-2: #9ba3b0;
   --text-3: #626a77;
 
-  --accent: #5c92eb;
-  --accent-2: #75a8f5;
-  --accent-soft: rgba(92, 146, 235, 0.14);
+  --accent: #4a80d6;
+  --accent-2: #6398e6;
+  --accent-soft: rgba(74, 128, 214, 0.14);
   --good: #37d29b;
   --warn: #f4b740;
   --bad: #fb6a68;
@@ -152,12 +152,12 @@ button:not(:disabled),
   border-radius: 50%;
   background: #fff;
   border: 3px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 143, 247, 0.18), 0 2px 6px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(74, 128, 214, 0.18), 0 2px 6px rgba(0, 0, 0, 0.5);
   transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
 .range-instr::-webkit-slider-thumb:hover {
   transform: scale(1.12);
-  box-shadow: 0 0 0 5px rgba(79, 143, 247, 0.22), 0 2px 8px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 5px rgba(74, 128, 214, 0.22), 0 2px 8px rgba(0, 0, 0, 0.55);
 }
 .range-instr::-moz-range-thumb {
   width: 15px;
@@ -165,7 +165,7 @@ button:not(:disabled),
   border-radius: 50%;
   background: #fff;
   border: 3px solid var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 143, 247, 0.18);
+  box-shadow: 0 0 0 3px rgba(74, 128, 214, 0.18);
 }
 
 .thin-scroll {

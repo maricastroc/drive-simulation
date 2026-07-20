@@ -101,15 +101,17 @@ export interface SweepJob {
   readonly cfg: ScenarioConfig;
   readonly spec: CandidateSpec | null;
   readonly ticks: number;
+  /** Run the raw network (no staged interventions) — the A/B baseline leg. */
+  readonly raw?: boolean;
 }
 
 export interface SweepJobResult {
   readonly stats: Stats;
 }
 
-export function runJob(cfg: ScenarioConfig, spec: CandidateSpec | null, ticks: number): Stats {
+export function runJob(cfg: ScenarioConfig, spec: CandidateSpec | null, ticks: number, raw = false): Stats {
   const w = createScene(0, { grid: cfg.grid, capacity: cfg.capacity });
-  applyConfig(w, cfg, true);
+  applyConfig(w, cfg, !raw);
   if (spec) applyCandidate(w, spec);
   for (let n = 0; n < ticks; n++) tick(w.world);
   return sampleStats(w.world);

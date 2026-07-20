@@ -418,24 +418,37 @@ export function applyConfig(scene: Scene, cfg: ScenarioConfig, withIntervention:
   applyRoutes(scene);
 }
 
-export function runExperiment(scene: Scene, durationTicks: number): ExperimentResult {
-  const cfg = captureConfig(scene);
-  const opts = { grid: cfg.grid, capacity: cfg.capacity };
-
-  const a = createScene(0, opts);
-  applyConfig(a, cfg, false);
-  for (let n = 0; n < durationTicks; n++) tick(a.world);
-
-  const b = createScene(0, opts);
-  applyConfig(b, cfg, true);
-  for (let n = 0; n < durationTicks; n++) tick(b.world);
-
+/** Human-readable summary of the interventions staged in `cfg`. Pure of the sim,
+ *  so the worker-pooled A/B can assemble its result label on the main thread. */
+export function experimentChanges(cfg: ScenarioConfig): string[] {
   const changes: string[] = [];
   if (cfg.closed) changes.push(`${cfg.closed} road${cfg.closed > 1 ? 's' : ''} closed`);
   if (cfg.incidents) changes.push(`${cfg.incidents} incident${cfg.incidents > 1 ? 's' : ''}`);
   if (cfg.signalsOn) changes.push(`${cfg.signalsOn} signalized`);
   if (cfg.coordinatedCount) changes.push(`${cfg.coordinatedCount} green wave${cfg.coordinatedCount > 1 ? 's' : ''}`);
   if (cfg.priorityFlips) changes.push('priority changed');
+  return changes;
+}
 
-  return { baseline: sampleStats(a.world), intervention: sampleStats(b.world), durationTicks, changes };
+/** One A/B leg: rebuild the network from `cfg` and run it for `durationTicks`.
+ *  `withIntervention` false is the untouched baseline, true is the staged network. */
+export function runExperimentLeg(cfg: ScenarioConfig, durationTicks: number, withIntervention: boolean): Stats {
+  const w = createScene(0, { grid: cfg.grid, capacity: cfg.capacity });
+  applyConfig(w, cfg, withIntervention);
+  for (let n = 0; n < durationTicks; n++) tick(w.world);
+  return sampleStats(w.world);
+}
+
+export function assembleExperiment(cfg: ScenarioConfig, durationTicks: number, baseline: Stats, intervention: Stats): ExperimentResult {
+  return { baseline, intervention, durationTicks, changes: experimentChanges(cfg) };
+}
+
+export function runExperiment(scene: Scene, durationTicks: number): ExperimentResult {
+  const cfg = captureConfig(scene);
+  return assembleExperiment(
+    cfg,
+    durationTicks,
+    runExperimentLeg(cfg, durationTicks, false),
+    runExperimentLeg(cfg, durationTicks, true),
+  );
 }

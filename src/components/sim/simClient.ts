@@ -21,6 +21,9 @@ export interface SimFrames {
   /** The grid the current frame was packed at — the caller renders it only against
    *  a matching scene, so a stale frame from a just-swapped network is skipped. */
   readonly grid: number;
+  /** Rolling per-tick sim cost (ms), measured in the worker so the perf overlay
+   *  reflects the authoritative off-thread model, not the idle main thread. */
+  readonly tickMs: number;
 }
 
 export interface SelectionMsg {
@@ -103,6 +106,7 @@ export function createSimClient(cfg: SimClientConfig): SimClient | null {
   let speed = cfg.speed;
   let sigPhase: number[] = [];
   let curGrid = cfg.grid;
+  let tickMs = 0;
   let sel: SelectionMsg | null = null;
   let cmdId = 0;
   let controlCb: ((config: ScenarioConfig, kind: ControlKind) => void) | null = null;
@@ -121,6 +125,7 @@ export function createSimClient(cfg: SimClientConfig): SimClient | null {
         curGrid = m.grid;
         arrival = performance.now();
         sigPhase = m.sigPhase;
+        tickMs = m.tickMs;
         break;
       case 'ready':
         controlCb?.(m.config, 'ready');
@@ -154,7 +159,7 @@ export function createSimClient(cfg: SimClientConfig): SimClient | null {
     setSelection: (s) => send({ type: 'setSelection', sel: s }),
     mutate,
     reset: (c) => send({ type: 'reset', grid: c.grid, capacity: c.capacity, demand: c.demand, config: c.config }),
-    frames: () => ({ prev, cur, arrival, speed, sigPhase, grid: curGrid }),
+    frames: () => ({ prev, cur, arrival, speed, sigPhase, grid: curGrid, tickMs }),
     selection: () => sel,
     onControl: (cb) => {
       controlCb = cb;

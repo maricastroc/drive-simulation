@@ -154,12 +154,14 @@ export function useSimLoop({ worker, grid, cap, initialDemand, refs, bump, onSta
       let cars: RenderCar[];
       let st: Stats;
       let clientGridOk = false;
+      let workerTickMs = -1;
       const client = simClientRef.current;
       if (client) {
         const fr = client.frames();
 
         if (fr.cur && fr.grid === scene.grid) {
           clientGridOk = true;
+          workerTickMs = fr.tickMs;
           const expected = (SIM_DT * 1000) / Math.max(fr.speed, 0.001);
           const alpha = Math.min((ts - fr.arrival) / expected, 1);
           cars = framesToCars(fr.prev, fr.cur, alpha, world.vparams, world.graph.speedLimit);
@@ -277,6 +279,7 @@ export function useSimLoop({ worker, grid, cap, initialDemand, refs, bump, onSta
       if (box) {
         const pf = perfRef.current;
         if (steps > 0) pf.tick += (tickMs / steps - pf.tick) * 0.2;
+        else if (workerTickMs >= 0) pf.tick += (workerTickMs - pf.tick) * 0.2;
         pf.draw += (drawMs - pf.draw) * 0.1;
         if (frameMs > 0) pf.fps += (1000 / frameMs - pf.fps) * 0.1;
         if (ts - pf.lastPaint > 250) {

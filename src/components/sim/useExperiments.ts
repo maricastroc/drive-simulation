@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  runExperiment,
   captureConfig,
   scenarioSignature,
   type Scene,
@@ -9,6 +8,7 @@ import {
 } from '@/render/scene';
 import { generateCandidates, type SweepRow, type Candidate } from '@/render/optimize';
 import { runSweepPool } from './sweepPool';
+import { runExperimentPool } from './experimentPool';
 import type { SimMutation } from './simProtocol';
 import type { SimClient } from './simClient';
 
@@ -68,10 +68,10 @@ export function useExperiments({
   const runExp = useCallback(() => {
     setExpRunning(true);
     setStagedNeedsRun(false);
-    window.setTimeout(() => {
-      setExpResult(runExperiment(sceneRef.current, expDuration));
+    runExperimentPool(captureConfig(sceneRef.current), expDuration).then((result) => {
+      setExpResult(result);
       setExpRunning(false);
-    }, 30);
+    });
   }, [sceneRef, expDuration]);
 
   const clearStaged = useCallback(() => {

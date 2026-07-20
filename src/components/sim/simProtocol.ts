@@ -63,7 +63,7 @@ export type SimMutation =
 /** worker → main thread */
 export type SimEvent =
   | { readonly type: 'ready'; readonly revision: number; readonly epoch: number; readonly config: ScenarioConfig }
-  | { readonly type: 'frame'; readonly frame: Float32Array; readonly epoch: number; readonly revision: number; readonly grid: number; readonly sigPhase: number[] }
+  | { readonly type: 'frame'; readonly frame: Float32Array; readonly epoch: number; readonly revision: number; readonly grid: number; readonly sigPhase: number[]; readonly tickMs: number }
   | { readonly type: 'applied'; readonly id: number; readonly revision: number; readonly epoch: number; readonly config: ScenarioConfig }
   | { readonly type: 'rejected'; readonly id: number; readonly reason: string }
   | { readonly type: 'selection'; readonly stats: SelStats | null; readonly route: CarRouteRef | null }

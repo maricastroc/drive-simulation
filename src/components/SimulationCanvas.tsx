@@ -4,7 +4,7 @@ import 'react-tooltip/dist/react-tooltip.css';
 import { Tooltip } from 'react-tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tick } from '@/engine';
-import { createScene, setDemandRate, runExperiment, captureConfig, scenarioSignature, toggleSignal, type Scene } from '@/render/scene';
+import { createScene, setDemandRate, captureConfig, scenarioSignature, toggleSignal, type Scene } from '@/render/scene';
 import { type SimClient } from './sim/simClient';
 import { encodeScenario, decodeScenario, applyScenario, SCENARIO_PARAM } from '@/render/shareLink';
 import { type Preset, type NetworkPreset, PRESETS, DEFAULT_NETWORK, SHOWCASE_NETWORK, capacityForGrid, centralJunction } from '@/render/presets';
@@ -12,6 +12,7 @@ import { type RenderCar } from '@/render/renderer';
 import { useSimLoop, type SimLoopRefs } from './sim/useSimLoop';
 import { useSimEngine } from './sim/useSimEngine';
 import { useExperiments } from './sim/useExperiments';
+import { runExperimentPool } from './sim/experimentPool';
 import {
   computeSelStats,
   compassLabels,
@@ -314,9 +315,10 @@ export function SimulationCanvas({
 
     const solo = createScene(dm, opts);
     toggleSignal(solo, centralJunction(solo));
-    const r = runExperiment(solo, DEMO_TICKS);
-    setDemoContrastPct(relPct(r.baseline.avgSpeedKmh, r.intervention.avgSpeedKmh));
     setDemoStarted(true);
+    runExperimentPool(captureConfig(solo), DEMO_TICKS).then((r) =>
+      setDemoContrastPct(relPct(r.baseline.avgSpeedKmh, r.intervention.avgSpeedKmh)),
+    );
   }, [network, clearShareUrl, resetExperiments, setExpDuration]);
 
   const share = useCallback(() => {

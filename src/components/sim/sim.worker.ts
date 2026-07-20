@@ -23,6 +23,7 @@ let running = false;
 let revision = 0;
 let epoch = 0;
 let selection: Selection = NONE_SEL;
+let tickMs = 0;
 
 function post(ev: SimEvent, transfer?: Transferable[]): void {
   ctx.postMessage(ev, transfer);
@@ -31,7 +32,7 @@ function post(ev: SimEvent, transfer?: Transferable[]): void {
 function publishFrame(): void {
   if (!scene) return;
   const frame = packFrame(scene.world);
-  post({ type: 'frame', frame, epoch, revision, grid: scene.grid, sigPhase: packSignalPhase(scene) }, [frame.buffer]);
+  post({ type: 'frame', frame, epoch, revision, grid: scene.grid, sigPhase: packSignalPhase(scene), tickMs }, [frame.buffer]);
 }
 
 function publishSelection(): void {
@@ -50,12 +51,14 @@ function loop(): void {
   if (scene && playing) {
     acc += dt * speed;
     let n = 0;
+    const t0 = performance.now();
     while (acc >= DT && n < MAX_STEPS) {
       tick(scene.world);
       acc -= DT;
       n += 1;
     }
     if (n > 0) {
+      tickMs += ((performance.now() - t0) / n - tickMs) * 0.2;
       publishFrame();
       publishSelection();
     }

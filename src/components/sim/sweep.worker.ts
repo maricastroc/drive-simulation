@@ -6,6 +6,6 @@ const ctx = self as unknown as {
 };
 
 ctx.onmessage = (e) => {
-  const { cfg, spec, ticks } = e.data;
-  ctx.postMessage({ stats: runJob(cfg, spec, ticks) });
+  const { cfg, spec, ticks, raw } = e.data;
+  ctx.postMessage({ stats: runJob(cfg, spec, ticks, raw) });
 };
